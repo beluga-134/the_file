@@ -83,26 +83,16 @@ fn startup_skin() -> Option<String> {
     parse_startup_args().1
 }
 
-/// 黑色玻璃皮肤：系统级亚克力模糊（桌面透出+模糊）。
-/// 拖动/缩放窗口时性能差是已知问题，前端在拖动前摘除、结束后恢复。
+/// 黑色玻璃皮肤：纯 alpha 透明（无系统模糊）。
+/// 为什么不用系统特效：window-vibrancy 两条路均实测不可用——
+/// 1) apply_acrylic 在 Win11 22H2+ 走 DWMSBT_TRANSIENTWINDOW 系统背景板，
+///    对透明 WebView2 窗渲染成实色；
+/// 2) apply_blur（SWCA ACCENT_ENABLE_BLURBEHIND）与逐像素 alpha 透明窗冲突，同样实色。
+/// Windows 未给 WebView2 逐像素透明窗提供受支持的系统模糊；真毛玻璃需 WinUI/Composition 壳。
+/// 因此本命令保留为接口兼容（前端仍在调用），实际不再挂任何系统特效。
 #[tauri::command]
 fn set_glass(app: tauri::AppHandle, enabled: bool) -> Result<(), String> {
-    let Some(window) = app.get_webview_window("main") else {
-        return Ok(());
-    };
-    #[cfg(target_os = "windows")]
-    {
-        if enabled {
-            // tint 透明度压低（24%）：暗色主要来自 CSS 壳层，叠加过深会盖死玻璃感
-            window_vibrancy::apply_acrylic(&window, Some((18, 18, 24, 60)))
-                .map_err(|error| format!("开启亚克力失败：{error}"))?;
-        } else {
-            window_vibrancy::clear_acrylic(&window)
-                .map_err(|error| format!("关闭亚克力失败：{error}"))?;
-        }
-    }
-    #[cfg(not(target_os = "windows"))]
-    let _ = (enabled, &window);
+    let _ = (app, enabled);
     Ok(())
 }
 

@@ -463,7 +463,8 @@ function refreshViewMenu(): void {
   ];
 }
 
-/** 拖动/缩放前摘除亚克力（已知卡顿源），停止后延迟恢复 */
+/** 系统特效钩子：Windows 对逐像素透明 WebView2 窗无受支持的模糊（实测 backdrop/SWCA 均实色），
+ * setGlass 已退化为 no-op；此二函数保留接口，将来若找到可用系统特效直接接回。 */
 function pauseGlassForDrag(): void {
   if (currentSkin() !== "glass" || !isTauri()) return;
   void backend.setGlass(false).catch(() => undefined);
