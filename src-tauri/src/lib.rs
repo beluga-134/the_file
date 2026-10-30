@@ -53,6 +53,19 @@ fn read_bookmarks() -> Option<String> {
     bookmarks_path().and_then(|p| std::fs::read_to_string(p).ok())
 }
 
+/// 书签写回（tmp + rename 原子替换，避免读到半截 JSON）
+#[tauri::command]
+fn write_bookmarks(content: String) -> Result<(), String> {
+    let path = bookmarks_path().ok_or_else(|| "无法定位 config/bookmarks.json".to_string())?;
+    // 先验一下是合法 JSON，防止前端 bug 把书签文件写坏
+    serde_json::from_str::<serde_json::Value>(&content)
+        .map_err(|e| format!("书签内容不是合法 JSON：{e}"))?;
+    let tmp = path.with_extension("json.tmp");
+    std::fs::write(&tmp, &content).map_err(|e| format!("写入 {} 失败：{e}", tmp.display()))?;
+    std::fs::rename(&tmp, &path).map_err(|e| format!("rename 失败：{e}"))?;
+    Ok(())
+}
+
 // ============================ 应用入口 ============================
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -60,6 +73,7 @@ pub fn run() {
     tauri::Builder::default()
         .invoke_handler(tauri::generate_handler![
             read_bookmarks,
+            write_bookmarks,
             fileops::dir_list,
             fileops::shell_open,
             fileops::open_with_dialog,

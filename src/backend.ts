@@ -11,6 +11,11 @@ export const backend = {
     return invoke<string | null>("read_bookmarks");
   },
 
+  /** 书签写回（tmp+rename 原子替换；内容需为合法 JSON） */
+  async writeBookmarks(content: string): Promise<void> {
+    return invoke<void>("write_bookmarks", { content });
+  },
+
   // ---- 文件视图（fileops.rs）----
 
   /** 目录列表；path 无效/不可读返回 null（前端 toast） */

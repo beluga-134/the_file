@@ -1,12 +1,12 @@
 /**
  * the_file —— Tauri 壳 + WebView 自绘文件列表（原 TE Host PoC，2026-10-30 去嵌入定稿）。
  *
- * 形态：
- * - 左栏：书签面板（config/bookmarks.json），点击 → fileview 导航到该文件夹
- * - 右栏：迷你工具条（← → ↑ + 当前路径）+ 自绘文件列表（fileview.ts）
- * - Tablacus Explorer 软嵌入已移除；文件操作走 Rust fileops
- *
- * 旧 PoC 的聊天视图、xterm/PTY、TE 双引擎均已移除。
+ * 书签系统（2026-10-30 二期）：
+ * - 临时组：本次会话有效（内存），+ 收藏当前文件夹、× 删除、右键编辑
+ * - 常驻组：config/bookmarks.json 持久化（[{name, path}]），增删改即时写回
+ * - 路径支持 Windows 盘符 / UNC / WSL 写法（~/…、/linux/…、\\wsl.localhost\…、\\wsl$\…），
+ *   归一化在 fileview.normalizeAddress（导航与保存统一走它）
+ * - 地址栏（#nav-path）是输入框：回车跳转、Esc 回填、聚焦时不被导航覆盖
  */
 import {
   ArrowLeft,
@@ -16,6 +16,9 @@ import {
   HardDrive,
   Maximize2,
   Minus,
+  Pin,
+  PinOff,
+  Plus,
   RefreshCw,
   X,
   createIcons,
@@ -24,7 +27,7 @@ import { getCurrentWindow } from "@tauri-apps/api/window";
 
 import "./styles.css";
 import { backend } from "./backend";
-import { fvBack, fvForward, fvUp, initFileview, navigateTo } from "./fileview";
+import { currentPath, fvBack, fvForward, fvUp, initFileview, navigateTo, normalizeAddressExport } from "./fileview";
 
 type ResizeDirection =
   | "North"
@@ -44,6 +47,9 @@ const iconSet = {
   HardDrive,
   Maximize2,
   Minus,
+  Pin,
+  PinOff,
+  Plus,
   RefreshCw,
   X,
 };
@@ -64,41 +70,73 @@ function query<T extends HTMLElement>(selector: string): T {
 
 // ============================ 书签模型 ============================
 
-interface BookmarkEntry {
-  group: string;
+interface BmEntry {
   name: string;
-  path: string;
-  drive: boolean;
+  path: string; // 保存时已归一化（WSL 写法 → \\wsl.localhost\UNC）
 }
 
-function bookmarkName(path: string): string {
-  const norm = path.trim().toLowerCase();
-  if (/^[a-z]:\/?$/.test(norm)) return `${path.substring(0, 1)}: 盘`;
-  const tail = path.replace(/[\\/]+$/, "").split(/[\\/]/).pop() ?? path;
-  return tail || path;
+/** 常驻书签（bookmarks.json，[{name,path}] 新格式） */
+let persistent: BmEntry[] = [];
+/** 临时书签（本次会话，内存） */
+let session: BmEntry[] = [];
+
+/** 名称默认取路径尾部；盘根给"X: 盘"；WSL 家目录给友好名 */
+function defaultName(path: string): string {
+  const p = path.replace(/[\\/]+$/, "");
+  if (/^[a-zA-Z]:$/.test(p)) return `${p.substring(0, 1)}: 盘`;
+  if (/^\\\\wsl\.localhost\\[^\\]+$/i.test(p)) return p.split("\\").pop() ?? p;
+  const tail = p.split(/[\\/]/).pop() ?? p;
+  return tail || p;
 }
 
-function parseBookmarks(raw: string): BookmarkEntry[] {
-  const entries: BookmarkEntry[] = [];
+/** 路径归一化（fileview 单一实现，导航/保存同源） */
+function normalizePath(p: string): string {
+  return normalizeAddressExport(p);
+}
+
+/**
+ * 解析 bookmarks.json：新格式 [{name,path}]；旧格式 {组名:[路径]} 自动平铺迁移
+ * （::开头的系统位置直接丢弃——自绘列表打不开）。
+ */
+function parseBookmarks(raw: string): BmEntry[] {
+  const out: BmEntry[] = [];
   try {
-    const obj = JSON.parse(raw.replace(/^\uFEFF/, "")) as Record<string, unknown>;
-    for (const [group, value] of Object.entries(obj)) {
-      const paths = typeof value === "string" ? [value] : Array.isArray(value) ? value : [];
-      for (const p of paths) {
-        if (typeof p !== "string" || !p.trim()) continue;
-        const path = p.trim();
-        entries.push({
-          group,
-          name: bookmarkName(path),
-          path,
-          drive: /^[a-zA-Z]:\/?$/.test(path),
-        });
+    const obj = JSON.parse(raw.replace(/^\uFEFF/, "")) as unknown;
+    if (Array.isArray(obj)) {
+      for (const it of obj) {
+        if (it && typeof it === "object" && typeof (it as BmEntry).path === "string") {
+          const e = it as BmEntry;
+          const path = normalizeAddressExport(e.path);
+          if (!path || path.startsWith("::")) continue;
+          out.push({ name: (e.name ?? "").trim() || defaultName(path), path });
+        }
+      }
+    } else if (obj && typeof obj === "object") {
+      for (const paths of Object.values(obj as Record<string, unknown>)) {
+        const list = typeof paths === "string" ? [paths] : Array.isArray(paths) ? paths : [];
+        for (const p of list) {
+          if (typeof p !== "string" || !p.trim()) continue;
+          const path = normalizeAddressExport(p);
+          if (path.startsWith("::")) continue;
+          out.push({ name: defaultName(path), path });
+        }
       }
     }
   } catch {
-    // 书签文件坏了 → 空面板 + 状态栏提示
+    // 书签文件坏了 → 空面板
   }
-  return entries;
+  return out;
+}
+
+function serializeBookmarks(): string {
+  return JSON.stringify(persistent, null, "\t");
+}
+
+async function savePersistent(): Promise<void> {
+  const err = await backend.writeBookmarks(serializeBookmarks()).catch((e) => String(e));
+  if (err !== undefined) {
+    showToast(`写入 bookmarks.json 失败：${err}`);
+  }
 }
 
 // ============================ DOM 骨架 ============================
@@ -141,7 +179,8 @@ appRoot.innerHTML = `
           <button class="nav-btn" id="nav-back" title="后退" disabled>${icon("ArrowLeft", 14)}</button>
           <button class="nav-btn" id="nav-forward" title="前进" disabled>${icon("ArrowRight", 14)}</button>
           <button class="nav-btn" id="nav-up" title="上一级">${icon("ArrowUp", 14)}</button>
-          <span class="nav-path" id="nav-path" title="">（载入中…）</span>
+          <input class="nav-path" id="nav-path" type="text" spellcheck="false"
+                 placeholder="输入路径跳转（支持 /home/…、~/…、\\\\wsl.localhost\\…）" value="" />
           <span class="nav-live" id="nav-live">…</span>
         </nav>
       </section>
@@ -164,6 +203,19 @@ appRoot.innerHTML = `
 
     <div class="popup-menu" id="popup-menu" hidden></div>
     <div class="toast" id="toast" role="status" hidden></div>
+
+    <div class="bm-edit-overlay" id="bm-edit-overlay" hidden>
+      <div class="bm-edit" role="dialog" aria-label="编辑书签">
+        <div class="bm-edit-title" id="bm-edit-title">编辑书签</div>
+        <label class="bm-edit-row">名称<input id="bm-edit-name" type="text" spellcheck="false" /></label>
+        <label class="bm-edit-row">路径<input id="bm-edit-path" type="text" spellcheck="false"
+          placeholder="E:\\… 或 /home/… 或 ~/…" /></label>
+        <div class="bm-edit-actions">
+          <button type="button" class="bm-btn" id="bm-edit-cancel">取消</button>
+          <button type="button" class="bm-btn primary" id="bm-edit-save">保存</button>
+        </div>
+      </div>
+    </div>
   </main>
 `;
 
@@ -174,9 +226,14 @@ const rosterPane = query<HTMLElement>("#roster-pane");
 const bookmarkList = query<HTMLElement>("#bookmark-list");
 const popupMenu = query<HTMLElement>("#popup-menu");
 const toast = query<HTMLElement>("#toast");
+const navPathInput = query<HTMLInputElement>("#nav-path");
+const editOverlay = query<HTMLElement>("#bm-edit-overlay");
+const editName = query<HTMLInputElement>("#bm-edit-name");
+const editPath = query<HTMLInputElement>("#bm-edit-path");
 
-let bookmarks: BookmarkEntry[] = [];
 let toastTimer: number | null = null;
+/** 正在编辑的书签（kind + 下标） */
+let editing: { kind: "session" | "persistent"; index: number } | null = null;
 
 function showToast(text: string): void {
   toast.textContent = text;
@@ -189,42 +246,83 @@ function showToast(text: string): void {
 
 // ============================ 书签面板 ============================
 
+function entryIconHtml(path: string): string {
+  const drive = /^[a-zA-Z]:\\?$/.test(path.replace(/\//g, "\\"));
+  return icon(drive ? "HardDrive" : "Folder", 15);
+}
+
+function appendGroupHead(title: string, hint: string, onAdd: () => void): void {
+  const head = document.createElement("div");
+  head.className = "bookmark-group-head bm-head-flex";
+  const label = document.createElement("span");
+  label.className = "bm-head-label";
+  label.textContent = title;
+  label.title = hint;
+  const add = document.createElement("button");
+  add.type = "button";
+  add.className = "bm-add";
+  add.title = "收藏当前文件夹";
+  add.innerHTML = icon("Plus", 12);
+  add.addEventListener("click", (ev) => {
+    ev.stopPropagation();
+    onAdd();
+  });
+  head.append(label, add);
+  bookmarkList.append(head);
+}
+
+function appendEntry(kind: "session" | "persistent", index: number, entry: BmEntry): void {
+  const item = document.createElement("button");
+  item.type = "button";
+  item.className = "bookmark-item";
+  item.dataset.path = entry.path;
+  item.setAttribute("role", "option");
+  item.innerHTML = `
+    <span class="bookmark-icon">${entryIconHtml(entry.path)}</span>
+    <span class="bookmark-copy">
+      <span class="bookmark-name">${entry.name}</span>
+      <span class="bookmark-path">${entry.path}</span>
+    </span>
+    <span class="bm-del" title="删除">${icon("X", 11)}</span>
+  `;
+  item.addEventListener("click", (ev) => {
+    if ((ev.target as Element).closest(".bm-del")) {
+      void removeEntry(kind, index);
+      return;
+    }
+    void gotoPath(entry.path);
+  });
+  item.addEventListener("contextmenu", (ev) => {
+    ev.preventDefault();
+    openEntryMenu(ev.clientX, ev.clientY, kind, index);
+  });
+  bookmarkList.append(item);
+}
+
 function renderBookmarks(): void {
   bookmarkList.innerHTML = "";
-  if (bookmarks.length === 0) {
-    const empty = document.createElement("div");
-    empty.className = "bookmark-empty";
-    empty.textContent = "没有书签：请编辑 config/bookmarks.json 后点刷新";
-    bookmarkList.append(empty);
-    return;
+  // ---- 临时组（本次会话） ----
+  appendGroupHead("临时", "本次会话内有效，关闭应用后消失", () => void addEntry("session"));
+  if (session.length === 0) {
+    appendEmptyRow("（空：点 + 收藏当前文件夹）");
+  } else {
+    session.forEach((e, i) => appendEntry("session", i, e));
   }
-  let currentGroup = "";
-  for (const entry of bookmarks) {
-    if (entry.group !== currentGroup) {
-      currentGroup = entry.group;
-      const head = document.createElement("div");
-      head.className = "bookmark-group-head";
-      head.textContent = entry.group;
-      bookmarkList.append(head);
-    }
-    const item = document.createElement("button");
-    item.type = "button";
-    item.className = "bookmark-item";
-    item.dataset.path = entry.path;
-    item.setAttribute("role", "option");
-    item.innerHTML = `
-      <span class="bookmark-icon">${icon(entry.drive ? "HardDrive" : "Folder", 15)}</span>
-      <span class="bookmark-copy">
-        <span class="bookmark-name">${entry.name}</span>
-        <span class="bookmark-path">${entry.path}</span>
-      </span>
-    `;
-    item.addEventListener("click", () => {
-      void gotoBookmark(entry);
-    });
-    bookmarkList.append(item);
+  // ---- 常驻组（bookmarks.json） ----
+  appendGroupHead("常驻", "持久化到 config/bookmarks.json", () => void addEntry("persistent"));
+  if (persistent.length === 0) {
+    appendEmptyRow("（空：点 + 收藏当前文件夹）");
+  } else {
+    persistent.forEach((e, i) => appendEntry("persistent", i, e));
   }
   refreshIcons();
+}
+
+function appendEmptyRow(text: string): void {
+  const empty = document.createElement("div");
+  empty.className = "bookmark-empty";
+  empty.textContent = text;
+  bookmarkList.append(empty);
 }
 
 async function reloadBookmarks(): Promise<void> {
@@ -233,12 +331,106 @@ async function reloadBookmarks(): Promise<void> {
     showToast("读取 bookmarks.json 失败");
     return;
   }
-  bookmarks = parseBookmarks(raw);
+  persistent = parseBookmarks(raw);
   renderBookmarks();
 }
 
-async function gotoBookmark(entry: BookmarkEntry): Promise<void> {
-  await navigateTo(entry.path);
+async function gotoPath(path: string): Promise<void> {
+  await navigateTo(path);
+}
+
+/** + 收藏当前文件夹（临时组只进内存；常驻组立即写盘） */
+async function addEntry(kind: "session" | "persistent"): Promise<void> {
+  const cur = currentPath();
+  if (!cur) {
+    showToast("当前没有打开的文件夹");
+    return;
+  }
+  const entry: BmEntry = { name: defaultName(cur), path: normalizePath(cur) };
+  if (kind === "session") {
+    session.push(entry);
+    showToast(`已加入临时书签：${entry.name}`);
+  } else {
+    persistent.push(entry);
+    await savePersistent();
+    showToast(`已加入常驻书签：${entry.name}`);
+  }
+  renderBookmarks();
+}
+
+async function removeEntry(kind: "session" | "persistent", index: number): Promise<void> {
+  if (kind === "session") {
+    const [gone] = session.splice(index, 1);
+    showToast(`已删除临时书签：${gone?.name ?? ""}`);
+  } else {
+    const [gone] = persistent.splice(index, 1);
+    await savePersistent();
+    showToast(`已删除常驻书签：${gone?.name ?? ""}`);
+  }
+  renderBookmarks();
+}
+
+// ---- 条目右键菜单（复用 #popup-menu） ----
+
+function openEntryMenu(x: number, y: number, kind: "session" | "persistent", index: number): void {
+  const items = [
+    { label: "编辑…", action: () => openEditor(kind, index) },
+    { label: "删除", action: () => void removeEntry(kind, index) },
+  ];
+  popupMenu.innerHTML = "";
+  for (const it of items) {
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.textContent = it.label;
+    btn.addEventListener("click", () => {
+      closeMenu();
+      it.action();
+    });
+    popupMenu.append(btn);
+  }
+  popupMenu.hidden = false;
+  popupMenu.style.left = `${Math.max(0, Math.min(x, window.innerWidth - 180))}px`;
+  popupMenu.style.top = `${Math.max(0, Math.min(y, window.innerHeight - 80))}px`;
+}
+
+// ---- 编辑弹窗 ----
+
+function openEditor(kind: "session" | "persistent", index: number): void {
+  const list = kind === "session" ? session : persistent;
+  const entry = list[index];
+  if (!entry) return;
+  editing = { kind, index };
+  query<HTMLElement>("#bm-edit-title").textContent = kind === "session" ? "编辑临时书签" : "编辑常驻书签";
+  editName.value = entry.name;
+  editPath.value = entry.path;
+  editOverlay.hidden = false;
+  editName.focus();
+  editName.select();
+}
+
+function closeEditor(): void {
+  editing = null;
+  editOverlay.hidden = true;
+}
+
+async function commitEditor(): Promise<void> {
+  if (!editing) return;
+  const name = editName.value.trim();
+  const path = normalizePath(editPath.value);
+  if (!path) {
+    showToast("路径不能为空");
+    return;
+  }
+  const entry: BmEntry = { name: name || defaultName(path), path };
+  const { kind, index } = editing;
+  if (kind === "session") session[index] = entry;
+  else {
+    persistent[index] = entry;
+    await savePersistent();
+  }
+  closeEditor();
+  renderBookmarks();
+  showToast("书签已保存");
 }
 
 // ============================ 菜单 ============================
@@ -360,6 +552,42 @@ function bindEvents(): void {
   query<HTMLButtonElement>("#nav-back").addEventListener("click", () => void fvBack());
   query<HTMLButtonElement>("#nav-forward").addEventListener("click", () => void fvForward());
   query<HTMLButtonElement>("#nav-up").addEventListener("click", () => void fvUp());
+
+  // 地址栏：回车跳转（WSL 写法归一化在 navigateTo 内做）；Esc/失焦回填当前路径
+  navPathInput.addEventListener("keydown", (ev) => {
+    if (ev.key === "Enter") {
+      ev.preventDefault();
+      const value = navPathInput.value.trim();
+      if (value) void navigateTo(value);
+      navPathInput.blur();
+    } else if (ev.key === "Escape") {
+      ev.preventDefault();
+      navPathInput.value = currentPath();
+      navPathInput.blur();
+    }
+  });
+  navPathInput.addEventListener("focus", () => navPathInput.select());
+  navPathInput.addEventListener("blur", () => {
+    navPathInput.value = currentPath();
+  });
+
+  // 编辑弹窗
+  query<HTMLButtonElement>("#bm-edit-cancel").addEventListener("click", closeEditor);
+  query<HTMLButtonElement>("#bm-edit-save").addEventListener("click", () => void commitEditor());
+  editOverlay.addEventListener("mousedown", (ev) => {
+    if (ev.target === editOverlay) closeEditor();
+  });
+  for (const input of [editName, editPath]) {
+    input.addEventListener("keydown", (ev) => {
+      if (ev.key === "Enter") {
+        ev.preventDefault();
+        void commitEditor();
+      } else if (ev.key === "Escape") {
+        ev.preventDefault();
+        closeEditor();
+      }
+    });
+  }
 
   bindSplitter();
 

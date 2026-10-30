@@ -1,12 +1,18 @@
-{
-	"qq_codex": [
-		"E:/qq_codex/the_wenjian",
-		"E:/qq_codex/qq_codex"
-	],
-	"系统": [
-		"::{20D04FE0-3AEA-1069-A2D8-08002B30309D}",
-		"::{F874310E-B6B7-47DC-BC84-B9E6B38F5903}",
-		"::{031E4825-7B94-4DC3-B131-E946B44C8DD5}",
-		"E:/"
-	]
-}
+[
+	{
+		"name": "the_wenjian",
+		"path": "E:\\qq_codex\\the_wenjian"
+	},
+	{
+		"name": "qq_codex",
+		"path": "E:\\qq_codex\\qq_codex"
+	},
+	{
+		"name": "E: 盘",
+		"path": "E:\\"
+	},
+	{
+		"name": "WSL home",
+		"path": "\\\\wsl.localhost\\Ubuntu\\home\\beluga"
+	}
+]

@@ -347,7 +347,7 @@ svg {
 
 .bookmark-item {
   display: grid;
-  grid-template-columns: 26px minmax(0, 1fr);
+  grid-template-columns: 26px minmax(0, 1fr) auto;
   align-items: center;
   width: 100%;
   height: 40px;
@@ -356,6 +356,31 @@ svg {
   border-bottom: 1px solid #edf0f2;
   background: #ffffff;
   text-align: left;
+}
+
+/* 条目尾部删除 ×：hover / 选中时浮现 */
+.bm-del {
+  display: grid;
+  place-items: center;
+  width: 18px;
+  height: 18px;
+  margin-left: 2px;
+  border: 1px solid transparent;
+  border-radius: 3px;
+  color: #7c8894;
+  opacity: 0;
+  transition: opacity 0.08s;
+}
+
+.bookmark-item:hover .bm-del,
+.bookmark-item.active .bm-del {
+  opacity: 1;
+}
+
+.bm-del:hover {
+  border-color: #c98f8f;
+  background: #fdeaea;
+  color: #8c2f2f;
 }
 
 .bookmark-item:hover:not(.active) {
@@ -468,6 +493,153 @@ svg {
   white-space: nowrap;
   text-overflow: ellipsis;
   user-select: text;
+}
+
+/* input 形态的地址栏：可输入路径跳转（回车确认、Esc 回填） */
+input.nav-path {
+  height: 22px;
+  box-sizing: border-box;
+  outline: none;
+  text-overflow: clip;
+  cursor: text;
+}
+
+input.nav-path:focus {
+  border-color: #e5a700;
+  background: #fffdf3;
+  box-shadow: 0 0 0 1px rgba(229, 167, 0, 0.35);
+}
+
+/* ============================================================
+ * 书签分组头（临时/常驻）：标签 + 收藏当前文件夹按钮
+ * ============================================================ */
+
+.bm-head-flex {
+  gap: 6px;
+}
+
+.bm-head-label {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.bm-add {
+  display: grid;
+  place-items: center;
+  width: 18px;
+  height: 18px;
+  padding: 0;
+  border: 1px solid var(--control-mid);
+  border-right-color: var(--control-dark);
+  border-bottom-color: var(--control-dark);
+  border-radius: 3px;
+  color: #173f72;
+  background: var(--control);
+}
+
+.bm-add:hover {
+  border-color: #e5a700;
+  background: #fff3c8;
+}
+
+.bm-add:active {
+  padding-top: 1px;
+}
+
+/* ============================================================
+ * 书签编辑弹窗（名称 + 路径，XP 风）
+ * ============================================================ */
+
+.bm-edit-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 90;
+  display: grid;
+  place-items: center;
+  background: rgba(31, 47, 61, 0.35);
+}
+
+/* hidden 属性会被上面的 display:grid 打败，必须显式关掉 */
+.bm-edit-overlay[hidden] {
+  display: none;
+}
+
+.bm-edit {
+  width: min(420px, calc(100vw - 48px));
+  padding: 0;
+  border: 1px solid #0a3c7c;
+  border-radius: 4px;
+  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.35);
+  background: var(--control, #ece9d8);
+  overflow: hidden;
+}
+
+.bm-edit-title {
+  padding: 5px 10px;
+  color: #ffffff;
+  background: linear-gradient(180deg, #3f8cf3, #1054bb 45%, #0a45a1);
+  font-weight: 700;
+  font-size: 12px;
+  text-shadow: 1px 1px #08348f;
+}
+
+.bm-edit-row {
+  display: grid;
+  grid-template-columns: 44px minmax(0, 1fr);
+  align-items: center;
+  gap: 8px;
+  margin: 10px 12px 0;
+  color: #1d2428;
+  font-size: 12px;
+}
+
+.bm-edit-row input {
+  height: 24px;
+  box-sizing: border-box;
+  padding: 0 6px;
+  border: 1px solid var(--input-border, #7f9db9);
+  border-radius: 2px;
+  background: #ffffff;
+  color: #1d2428;
+  font-family: var(--mono-font, Consolas, monospace);
+  font-size: 12px;
+  outline: none;
+}
+
+.bm-edit-row input:focus {
+  border-color: #e5a700;
+  box-shadow: 0 0 0 1px rgba(229, 167, 0, 0.35);
+}
+
+.bm-edit-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin: 12px;
+}
+
+.bm-btn {
+  min-width: 74px;
+  height: 24px;
+  padding: 0 12px;
+  border: 1px solid var(--control-mid, #a5b4c0);
+  border-right-color: var(--control-dark, #7a8b99);
+  border-bottom-color: var(--control-dark, #7a8b99);
+  border-radius: 3px;
+  color: #173f72;
+  background: var(--control, #ece9d8);
+  font-size: 12px;
+}
+
+.bm-btn:hover {
+  border-color: #e5a700;
+  background: #fff3c8;
+}
+
+.bm-btn.primary {
+  font-weight: 700;
 }
 
 .nav-live {

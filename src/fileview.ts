@@ -82,13 +82,23 @@ let navSeq = 0;                        // 导航竞态防护（慢目录后到�
 // ============================ 导出 API（main.ts 消费） ============================
 
 /** 导航到任意路径（书签点击用）；shell 命名空间位置（::{…}）不支持，toast 提示 */
+/** 当前目录（书签面板“收藏当前位置”用） */
+export function currentPath(): string {
+  return curPath;
+}
+
 export async function navigateTo(rawPath: string): Promise<void> {
   const p = rawPath.trim();
   if (p.startsWith("::")) {
     toast("暂不支持系统位置（此电脑/下载/库），请用具体文件夹路径");
     return;
   }
-  await navigate(p);
+  await navigate(normalizeAddress(p));
+}
+
+/** 地址/书签路径归一化（保存侧也用这份实现，单一真相） */
+export function normalizeAddressExport(input: string): string {
+  return normalizeAddress(input);
 }
 
 /**
@@ -686,13 +696,14 @@ async function finishRename(oldName: string, newName: string): Promise<void> {
 // ============================ 状态上报（导航条/状态栏/书签高亮） ============================
 
 function syncChrome(): void {
-  const navPath = document.querySelector<HTMLElement>("#nav-path");
+  const navPath = document.querySelector<HTMLInputElement>("#nav-path");
   const statusPath = document.querySelector<HTMLElement>("#status-path");
   const navLive = document.querySelector<HTMLElement>("#nav-live");
   const navBack = document.querySelector<HTMLButtonElement>("#nav-back");
   const navForward = document.querySelector<HTMLButtonElement>("#nav-forward");
   if (navPath) {
-    navPath.textContent = curPath;
+    // 输入框聚焦（正在改地址）时不覆盖用户输入；失焦时 syncAddress 会回填
+    if (document.activeElement !== navPath) navPath.value = curPath;
     navPath.title = curPath;
   }
   if (statusPath) statusPath.textContent = curPath;
@@ -744,6 +755,42 @@ function normWin(p: string): string {
   if (/^[a-zA-Z]:$/.test(s)) s += "\\";
   if (s.length > 3) s = s.replace(/\\+$/, "");
   return s;
+}
+
+// ---- WSL 路径支持（对齐 qq_codex 的归一化规则）----
+
+/** 默认发行版与家目录（本机约定：Ubuntu + /home/beluga） */
+const WSL_DISTRO = "Ubuntu";
+const WSL_HOME = "home\\beluga";
+
+/**
+ * 地址/书签路径归一化：
+ *   ~ / ~/...          → \\wsl.localhost\Ubuntu\home\beluga\...
+ *   /linux/abs         → \\wsl.localhost\Ubuntu\linux\abs
+ *   \\wsl$\Distro\... / \\wsl.localhost\Distro\...（正反斜杠均可）
+ *                      → \\wsl.localhost\Distro\...
+ *   X:\ / X:/...       → X:\...（normWin）
+ * 其他（\\server\share 等 UNC）原样交 normWin
+ */
+function normalizeAddress(input: string): string {
+  let s = input.trim();
+  if (!s) return s;
+  if (s === "~") return `\\\\wsl.localhost\\${WSL_DISTRO}\\${WSL_HOME}`;
+  if (s.startsWith("~/") || s.startsWith("~\\")) {
+    return `\\\\wsl.localhost\\${WSL_DISTRO}\\${WSL_HOME}\\${s.slice(2).replace(/\//g, "\\")}`;
+  }
+  // \\wsl$ / \\wsl.localhost / //wsl... → 统一 \\wsl.localhost
+  const wslUnc = /^[\\/]{2}(wsl(?:\$|\.localhost))[\\/]([^\\/]+)([\\/].*)?$/i.exec(s);
+  if (wslUnc) {
+    const distro = wslUnc[2] ?? WSL_DISTRO;
+    const rest = (wslUnc[3] ?? "").replace(/\//g, "\\");
+    return `\\\\wsl.localhost\\${distro}${rest}`;
+  }
+  // 纯 Linux 绝对路径 → 默认发行版
+  if (s.startsWith("/")) {
+    return `\\\\wsl.localhost\\${WSL_DISTRO}${s.replace(/\//g, "\\")}`;
+  }
+  return normWin(s);
 }
 
 function join(dir: string, name: string): string {
