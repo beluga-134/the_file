@@ -26,7 +26,7 @@ config\bookmarks.json # 常驻书签数据源，应用内增删改即时写回�
     右键条目 →「编辑…」改名称/路径
 - **地址栏输入跳转**：回车直达、Esc 回填；支持三种写法（归一化对齐 qq_codex）：
   - Windows：`E:\foo\bar`；UNC：`\\server\share`、`\\wsl.localhost\Ubuntu\…`、`\\wsl$\…`
-  - Linux 风格：`/home/beluga/…` → `\\wsl.localhost\Ubuntu\home\beluga\…`
+  - Linux 风格：`/home/beluga/…` → `\\wsl.localhost\Ubuntu\home\beluga\…`；`/mnt/e/…` → `E:\…`（盘符挂载写法）
   - `~` / `~/…` → WSL 家目录
 - 自绘文件列表：单击/Ctrl/Shift 多选、双击打开、**F2 行内重命名**、
   Delete/Shift+Delete 删除（回收站/永久）、Ctrl+C/X/V 剪贴板、Ctrl+A、

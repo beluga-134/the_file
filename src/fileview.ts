@@ -408,7 +408,7 @@ function render(): void {
   if (!root || !body) return;
   const rows: string[] = [];
   rows.push(
-    `<div class="file-row file-up" data-up="1" title="上一级"><span class="fr-cell fr-name"><span class="fr-icon">${xpIcon("folderUp")}</span><span class="fr-text">..</span></span><span class="fr-cell fr-size"></span><span class="fr-cell fr-mtime"></span></div>`,
+    `<div class="file-row file-up" data-up="1" title="上一级"><span class="fr-cell fr-name"><span class="fr-icon">${xpIcon("folderUp", 18)}</span><span class="fr-text">..</span></span><span class="fr-cell fr-size"></span><span class="fr-cell fr-mtime"></span></div>`,
   );
   if (entries.length === 0) {
     rows.push(`<div class="fv-empty">（空文件夹）</div>`);
@@ -418,7 +418,7 @@ function render(): void {
     const cut = clipboard?.mode === "cut" && clipboard.paths.includes(join(curPath, e.name)) ? " cut" : "";
     const name = escapeHtml(e.name);
     rows.push(
-      `<div class="file-row${sel}${cut}" data-name="${name}"><span class="fr-cell fr-name"><span class="fr-icon">${xpIcon(iconFor(e))}</span><span class="fr-text" title="${name}">${name}</span></span><span class="fr-cell fr-size">${fmtSize(e)}</span><span class="fr-cell fr-mtime">${fmtMtime(e.mtimeMs)}</span></div>`,
+      `<div class="file-row${sel}${cut}" data-name="${name}"><span class="fr-cell fr-name"><span class="fr-icon">${xpIcon(iconFor(e), 18)}</span><span class="fr-text" title="${name}">${name}</span></span><span class="fr-cell fr-size">${fmtSize(e)}</span><span class="fr-cell fr-mtime">${fmtMtime(e.mtimeMs)}</span></div>`,
     );
   }
   body.innerHTML = rows.join("");
@@ -769,6 +769,7 @@ const WSL_HOME = "home\\beluga";
 /**
  * 地址/书签路径归一化：
  *   ~ / ~/...          → \\wsl.localhost\Ubuntu\home\beluga\...
+ *   /mnt/<盘>/…        → <盘>:\…（WSL 盘符挂载，如 /mnt/e/qq_codex → E:\qq_codex）
  *   /linux/abs         → \\wsl.localhost\Ubuntu\linux\abs
  *   \\wsl$\Distro\... / \\wsl.localhost\Distro\...（正反斜杠均可）
  *                      → \\wsl.localhost\Distro\...
@@ -788,6 +789,12 @@ function normalizeAddress(input: string): string {
     const distro = wslUnc[2] ?? WSL_DISTRO;
     const rest = (wslUnc[3] ?? "").replace(/\//g, "\\");
     return `\\\\wsl.localhost\\${distro}${rest}`;
+  }
+  // /mnt/<盘>/… → Windows 盘符路径（WSL 挂载表示法，如 /mnt/e/qq_codex → E:\qq_codex）
+  const mnt = /^\/mnt\/([a-zA-Z])\b\/?(.*)$/.exec(s);
+  if (mnt) {
+    const rest = (mnt[2] ?? "").replace(/\//g, "\\");
+    return normWin(`${mnt[1].toUpperCase()}:\\${rest}`);
   }
   // 纯 Linux 绝对路径 → 默认发行版
   if (s.startsWith("/")) {

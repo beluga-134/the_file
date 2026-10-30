@@ -234,10 +234,10 @@ function showToast(text: string): void {
 
 function entryIconHtml(path: string): string {
   const norm = path.replace(/\//g, "\\");
-  if (/^[a-zA-Z]:\\?$/.test(norm)) return xpIcon("drive", 15);   // 盘根 → 本地磁盘
-  if (/^\\\\wsl/i.test(norm)) return xpIcon("drive", 15);         // WSL 发行版 → 本地磁盘
-  if (/^\\\\[^\\]/.test(norm)) return xpIcon("net", 15);          // UNC 共享 → 网络位置
-  return xpIcon("folder", 15);
+  if (/^[a-zA-Z]:\\?$/.test(norm)) return xpIcon("drive", 18);   // 盘根 → 本地磁盘
+  if (/^\\\\wsl/i.test(norm)) return xpIcon("drive", 18);         // WSL 发行版 → 本地磁盘
+  if (/^\\\\[^\\]/.test(norm)) return xpIcon("net", 18);          // UNC 共享 → 网络位置
+  return xpIcon("folder", 18);
 }
 
 function appendGroupHead(title: string, hint: string, onAdd: () => void): void {
@@ -444,6 +444,24 @@ const GLASS_ALPHA_LABELS: Record<GlassAlpha, string> = {
   deep: "深（最实）",
 };
 
+type UiZoom = "25" | "50" | "75";
+const LS_UI_ZOOM = "uiZoom";
+/** 挡位 → CSS zoom 倍率：当前观感 = 50 档（1.0），75 档 = 1.5 倍 */
+const UI_ZOOM_FACTORS: Record<UiZoom, number> = { "25": 0.5, "50": 1, "75": 1.5 };
+
+function currentUiZoom(): UiZoom {
+  const saved = localStorage.getItem(LS_UI_ZOOM);
+  return saved === "25" || saved === "75" ? saved : "50";
+}
+
+/** 界面整体缩放（文字+图标，CSS zoom）：查看菜单三挡 */
+function applyUiZoom(level: UiZoom): void {
+  localStorage.setItem(LS_UI_ZOOM, level);
+  document.documentElement.style.zoom = String(UI_ZOOM_FACTORS[level]);
+  refreshViewMenu();
+  showToast(`界面大小：${level}%`);
+}
+
 function currentGlassAlpha(): GlassAlpha {
   const saved = localStorage.getItem(LS_GLASS_ALPHA);
   return saved === "light" || saved === "deep" ? saved : "mid";
@@ -478,6 +496,7 @@ async function applySkin(skin: Skin): Promise<void> {
 function refreshViewMenu(): void {
   const skin = currentSkin();
   const alpha = currentGlassAlpha();
+  const zoom = currentUiZoom();
   MENUS.view = [
     { label: "刷新书签", action: () => void reloadBookmarks() },
     { label: `皮肤：${SKIN_LABELS.xp}${skin === "xp" ? "  ●" : ""}`, action: () => void applySkin("xp") },
@@ -485,24 +504,10 @@ function refreshViewMenu(): void {
     { label: `玻璃透明：浅（最透）${alpha === "light" ? "  ●" : ""}`, action: () => applyGlassAlpha("light") },
     { label: `玻璃透明：中（默认）${alpha === "mid" ? "  ●" : ""}`, action: () => applyGlassAlpha("mid") },
     { label: `玻璃透明：深（最实）${alpha === "deep" ? "  ●" : ""}`, action: () => applyGlassAlpha("deep") },
+    { label: `界面大小：25%${zoom === "25" ? "  ●" : ""}`, action: () => applyUiZoom("25") },
+    { label: `界面大小：50%（默认）${zoom === "50" ? "  ●" : ""}`, action: () => applyUiZoom("50") },
+    { label: `界面大小：75%${zoom === "75" ? "  ●" : ""}`, action: () => applyUiZoom("75") },
   ];
-}
-
-/** 系统特效钩子：Windows 对逐像素透明 WebView2 窗无受支持的模糊（实测 backdrop/SWCA 均实色），
- * setGlass 已退化为 no-op；此二函数保留接口，将来若找到可用系统特效直接接回。 */
-function pauseGlassForDrag(): void {
-  if (currentSkin() !== "glass" || !isTauri()) return;
-  void backend.setGlass(false).catch(() => undefined);
-}
-
-let glassRestoreTimer: number | null = null;
-function scheduleGlassRestore(): void {
-  if (currentSkin() !== "glass" || !isTauri()) return;
-  if (glassRestoreTimer !== null) window.clearTimeout(glassRestoreTimer);
-  glassRestoreTimer = window.setTimeout(() => {
-    glassRestoreTimer = null;
-    void backend.setGlass(true).catch(() => undefined);
-  }, 400);
 }
 
 let MENUS: Record<string, MenuItem[]> = {
@@ -541,20 +546,17 @@ function closeMenu(): void {
 function startWindowDrag(event: MouseEvent): void {
   if (event.button !== 0 || event.detail !== 1) return;
   if ((event.target as Element).closest(".window-controls")) return;
-  pauseGlassForDrag(); // 亚克力拖动卡顿规避：拖前摘除，onMoved 后恢复
   void getCurrentWindow().startDragging().catch(() => undefined);
 }
 
 async function startWindowResize(direction: ResizeDirection, event: PointerEvent): Promise<void> {
   if (event.button !== 0) return;
   event.preventDefault();
-  pauseGlassForDrag();
   try {
     await getCurrentWindow().startResizeDragging(direction);
   } catch {
     // 忽略
   }
-  scheduleGlassRestore();
 }
 
 async function windowAction(action: "minimize" | "maximize" | "close"): Promise<void> {
@@ -682,6 +684,7 @@ function boot(): void {
   // 皮肤先于 UI 生效（免闪白）：localStorage 记忆，--skin= 参数优先
   document.documentElement.dataset.theme = currentSkin();
   document.documentElement.dataset.glassAlpha = currentGlassAlpha();
+  document.documentElement.style.zoom = String(UI_ZOOM_FACTORS[currentUiZoom()]);
   initFileview(); // 文件列表（自绘）：初始目录 = 启动参数 > 上次目录 > 猜盘根
   bindEvents();
   startClock();
@@ -691,19 +694,13 @@ function boot(): void {
   void setupSkinEffects();
 }
 
-/** 启动时的皮肤副作用：--skin= 参数覆盖记忆 + 亚克力开启 + 拖动恢复钩子 */
+/** 启动时的皮肤副作用：--skin= 参数覆盖记忆（set_glass 已 no-op，无系统特效可挂） */
 async function setupSkinEffects(): Promise<void> {
   if (!isTauri()) return;
   const argSkin = await backend.startupSkin().catch(() => null);
   if (argSkin === "xp" || argSkin === "glass") {
     await applySkin(argSkin);
-  } else if (currentSkin() === "glass") {
-    await backend.setGlass(true).catch(() => undefined);
   }
-  const appWindow = getCurrentWindow();
-  // 拖动/缩放结束后（含标题栏拖动）恢复亚克力
-  void appWindow.onMoved(() => scheduleGlassRestore());
-  void appWindow.onResized(() => scheduleGlassRestore());
 }
 
 // ============================ 外部打开（单实例） ============================
