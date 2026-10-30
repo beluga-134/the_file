@@ -445,7 +445,12 @@ async function applySkin(skin: Skin): Promise<void> {
   localStorage.setItem(LS_SKIN, skin);
   document.documentElement.dataset.theme = skin;
   refreshViewMenu();
-  if (isTauri()) await backend.setGlass(skin === "glass").catch(() => undefined);
+  if (isTauri()) {
+    await backend.setGlass(skin === "glass").catch((error: unknown) => {
+      // 亚克力失败必须可见：否则玻璃皮肤静默退化成“普通暗色”难排查
+      showToast(`亚克力效果失败：${error instanceof Error ? error.message : String(error)}`);
+    });
+  }
   showToast(`已切换皮肤：${SKIN_LABELS[skin]}`);
 }
 

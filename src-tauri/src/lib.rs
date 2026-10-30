@@ -93,7 +93,8 @@ fn set_glass(app: tauri::AppHandle, enabled: bool) -> Result<(), String> {
     #[cfg(target_os = "windows")]
     {
         if enabled {
-            window_vibrancy::apply_acrylic(&window, Some((18, 18, 24, 130)))
+            // tint 透明度压低（24%）：暗色主要来自 CSS 壳层，叠加过深会盖死玻璃感
+            window_vibrancy::apply_acrylic(&window, Some((18, 18, 24, 60)))
                 .map_err(|error| format!("开启亚克力失败：{error}"))?;
         } else {
             window_vibrancy::clear_acrylic(&window)

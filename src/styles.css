@@ -1128,10 +1128,11 @@ input.nav-path:focus {
 
 :root[data-theme="glass"] {
   color: #e8edf5;
+  background: transparent; /* 关键：html 画布透明（否则 body 透明也透不出去） */
   --focus: #8ab4ff;
   --body-bg: transparent;
   --body-stripes: none;
-  --control: rgba(32, 35, 44, 0.86);
+  --control: rgba(28, 31, 39, 0.62);
   --control-light: rgba(255, 255, 255, 0.55);
   --control-mid: rgba(255, 255, 255, 0.22);
   --control-dark: rgba(255, 255, 255, 0.12);
@@ -1139,10 +1140,10 @@ input.nav-path:focus {
   --input-border: rgba(255, 255, 255, 0.25);
   --paper: rgba(255, 255, 255, 0.10);
   --online: #34c759;
-  --shell-bg: rgba(21, 23, 30, 0.86);
+  --shell-bg: rgba(20, 22, 29, 0.58);
   --shell-top-border: rgba(255, 255, 255, 0.18);
   --shell-radius: 12px;
-  --shell-shadow: 0 24px 70px rgba(0, 0, 0, 0.55), 0 0 0 1px rgba(0, 0, 0, 0.35);
+  --shell-shadow: 0 24px 70px rgba(0, 0, 0, 0.55), 0 0 0 1px rgba(0, 0, 0, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.14);
   --titlebar-grad: transparent;
   --titlebar-border: none;
   --titlebar-border-top: rgba(255, 255, 255, 0.14);
@@ -1154,7 +1155,7 @@ input.nav-path:focus {
   --head-border: rgba(255, 255, 255, 0.10);
   --head-shadow: none;
   --btn-accent-text: #cfe2ff;
-  --list-bg: rgba(255, 255, 255, 0.045);
+  --list-bg: rgba(255, 255, 255, 0.035);
   --list-alt: rgba(255, 255, 255, 0.03);
   --list-hover: rgba(255, 255, 255, 0.09);
   --list-border: rgba(255, 255, 255, 0.14);
@@ -1300,3 +1301,4 @@ input.nav-path:focus {
 :root[data-theme="glass"] .file-row.sel .fr-icon {
   color: inherit;
 }
+
