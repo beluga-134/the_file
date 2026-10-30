@@ -436,6 +436,27 @@ const SKIN_LABELS: Record<Skin, string> = {
   glass: "黑色玻璃",
 };
 
+type GlassAlpha = "light" | "mid" | "deep";
+const LS_GLASS_ALPHA = "glassAlpha";
+const GLASS_ALPHA_LABELS: Record<GlassAlpha, string> = {
+  light: "浅（最透）",
+  mid: "中（默认）",
+  deep: "深（最实）",
+};
+
+function currentGlassAlpha(): GlassAlpha {
+  const saved = localStorage.getItem(LS_GLASS_ALPHA);
+  return saved === "light" || saved === "deep" ? saved : "mid";
+}
+
+/** 玻璃透明度挡位（仅 glass 皮肤生效；XP 皮肤下只记忆，切回玻璃时生效） */
+function applyGlassAlpha(level: GlassAlpha): void {
+  localStorage.setItem(LS_GLASS_ALPHA, level);
+  document.documentElement.dataset.glassAlpha = level;
+  refreshViewMenu();
+  if (currentSkin() === "glass") showToast(`玻璃透明度：${GLASS_ALPHA_LABELS[level]}`);
+}
+
 function currentSkin(): Skin {
   return localStorage.getItem(LS_SKIN) === "glass" ? "glass" : "xp";
 }
@@ -456,10 +477,14 @@ async function applySkin(skin: Skin): Promise<void> {
 
 function refreshViewMenu(): void {
   const skin = currentSkin();
+  const alpha = currentGlassAlpha();
   MENUS.view = [
     { label: "刷新书签", action: () => void reloadBookmarks() },
     { label: `皮肤：${SKIN_LABELS.xp}${skin === "xp" ? "  ●" : ""}`, action: () => void applySkin("xp") },
     { label: `皮肤：${SKIN_LABELS.glass}${skin === "glass" ? "  ●" : ""}`, action: () => void applySkin("glass") },
+    { label: `玻璃透明：浅（最透）${alpha === "light" ? "  ●" : ""}`, action: () => applyGlassAlpha("light") },
+    { label: `玻璃透明：中（默认）${alpha === "mid" ? "  ●" : ""}`, action: () => applyGlassAlpha("mid") },
+    { label: `玻璃透明：深（最实）${alpha === "deep" ? "  ●" : ""}`, action: () => applyGlassAlpha("deep") },
   ];
 }
 
@@ -656,6 +681,7 @@ function startClock(): void {
 function boot(): void {
   // 皮肤先于 UI 生效（免闪白）：localStorage 记忆，--skin= 参数优先
   document.documentElement.dataset.theme = currentSkin();
+  document.documentElement.dataset.glassAlpha = currentGlassAlpha();
   initFileview(); // 文件列表（自绘）：初始目录 = 启动参数 > 上次目录 > 猜盘根
   bindEvents();
   startClock();

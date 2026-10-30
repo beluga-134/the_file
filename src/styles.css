@@ -1302,3 +1302,19 @@ input.nav-path:focus {
   color: inherit;
 }
 
+
+/* ---- 玻璃透明度三挡（data-glass-alpha，仅 glass 皮肤生效）---- */
+:root[data-theme="glass"][data-glass-alpha="light"] {
+  --shell-bg: rgba(20, 22, 29, 0.42);
+  --control: rgba(28, 31, 39, 0.50);
+}
+
+:root[data-theme="glass"][data-glass-alpha="mid"] {
+  --shell-bg: rgba(20, 22, 29, 0.58);
+  --control: rgba(28, 31, 39, 0.62);
+}
+
+:root[data-theme="glass"][data-glass-alpha="deep"] {
+  --shell-bg: rgba(20, 22, 29, 0.74);
+  --control: rgba(28, 31, 39, 0.78);
+}
