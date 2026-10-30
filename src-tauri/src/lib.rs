@@ -13,6 +13,11 @@ mod fileops;
 
 use std::path::PathBuf;
 
+use tauri::{Emitter, Manager};
+
+/// 单实例转发事件：第二实例携带的目录路径（前端 listen 后同窗口打开 + 累计临时书签）
+const EXTERNAL_OPEN_EVENT: &str = "external-open";
+
 // ============================ 书签文件定位 ============================
 
 /// 逐级上溯（最多 8 跳）找 config/bookmarks.json；exe 与 manifest 两个起点取先命中。
@@ -81,6 +86,22 @@ fn write_bookmarks(content: String) -> Result<(), String> {
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
+        // 必须第一个注册：二次启动直接退出，把 argv 里的目录转发给已运行实例
+        .plugin(tauri_plugin_single_instance::init(|app, argv, _cwd| {
+            let dir = argv
+                .into_iter()
+                .skip(1)
+                .map(|arg| arg.trim().to_string())
+                .find(|arg| !arg.is_empty());
+            if let Some(dir) = dir {
+                let _ = app.emit(EXTERNAL_OPEN_EVENT, dir);
+            }
+            if let Some(window) = app.get_webview_window("main") {
+                let _ = window.unminimize();
+                let _ = window.show();
+                let _ = window.set_focus();
+            }
+        }))
         .invoke_handler(tauri::generate_handler![
             startup_dir,
             read_bookmarks,

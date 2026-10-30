@@ -177,7 +177,7 @@ svg {
 }
 
 .title-icon svg {
-  color: #e8a33d; /* 文件夹黄，与 exe 图标呼应 */
+  display: block;
 }
 
 .window-controls {
@@ -1004,6 +1004,12 @@ input.nav-path:focus {
   flex: none;
   width: 20px;
   color: #d99a1b; /* 目录金黄，同书签图标 */
+}
+
+/* XP 风自绘彩色图标（xpicons.ts）：不继承 currentColor，仅对齐基线 */
+.xpicon {
+  display: block;
+  flex: none;
 }
 
 .file-row:not(.file-up) .fr-icon {

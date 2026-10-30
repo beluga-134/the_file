@@ -9,25 +9,19 @@
  * - 地址栏（#nav-path）是输入框：回车跳转、Esc 回填、聚焦时不被导航覆盖
  */
 import {
-  ArrowLeft,
-  ArrowRight,
-  ArrowUp,
-  Folder,
-  HardDrive,
   Maximize2,
   Minus,
-  Pin,
-  PinOff,
   Plus,
-  RefreshCw,
   X,
   createIcons,
 } from "lucide";
 import { getCurrentWindow } from "@tauri-apps/api/window";
+import { listen } from "@tauri-apps/api/event";
 
 import "./styles.css";
-import { backend } from "./backend";
+import { backend, isTauri } from "./backend";
 import { currentPath, fvBack, fvForward, fvUp, initFileview, navigateTo, normalizeAddressExport } from "./fileview";
+import { xpIcon } from "./xpicons";
 
 type ResizeDirection =
   | "North"
@@ -40,17 +34,9 @@ type ResizeDirection =
   | "NorthWest";
 
 const iconSet = {
-  ArrowLeft,
-  ArrowRight,
-  ArrowUp,
-  Folder,
-  HardDrive,
   Maximize2,
   Minus,
-  Pin,
-  PinOff,
   Plus,
-  RefreshCw,
   X,
 };
 
@@ -147,7 +133,7 @@ appRoot.innerHTML = `
   <main class="app-shell" id="app-shell">
     <header class="xp-titlebar" id="window-drag-region">
       <div class="window-title">
-        <span class="title-icon" id="title-icon">${icon("Folder", 13)}</span>
+        <span class="title-icon" id="title-icon">${xpIcon("folder", 14)}</span>
         <span id="window-title-text">the_file</span>
       </div>
       <div class="window-controls" aria-label="窗口控制">
@@ -166,8 +152,8 @@ appRoot.innerHTML = `
     <div class="workspace">
       <aside class="roster-pane" id="roster-pane" aria-label="文件夹书签">
         <div class="bookmark-head">
-          <span class="bookmark-head-title">${icon("Folder", 14)}<span>资源书签</span></span>
-          <button class="bookmark-refresh" id="bookmark-refresh" title="重新载入 bookmarks.json">${icon("RefreshCw", 12)}</button>
+          <span class="bookmark-head-title">${xpIcon("folder", 14)}<span>资源书签</span></span>
+          <button class="bookmark-refresh" id="bookmark-refresh" title="重新载入 bookmarks.json">${xpIcon("refresh", 13)}</button>
         </div>
         <div class="bookmark-list" id="bookmark-list" role="listbox" aria-label="书签列表"></div>
       </aside>
@@ -176,9 +162,9 @@ appRoot.innerHTML = `
 
       <section class="file-pane" aria-label="文件列表">
         <nav class="file-navbar" aria-label="导航">
-          <button class="nav-btn" id="nav-back" title="后退" disabled>${icon("ArrowLeft", 14)}</button>
-          <button class="nav-btn" id="nav-forward" title="前进" disabled>${icon("ArrowRight", 14)}</button>
-          <button class="nav-btn" id="nav-up" title="上一级">${icon("ArrowUp", 14)}</button>
+          <button class="nav-btn" id="nav-back" title="后退" disabled>${xpIcon("back", 16)}</button>
+          <button class="nav-btn" id="nav-forward" title="前进" disabled>${xpIcon("forward", 16)}</button>
+          <button class="nav-btn" id="nav-up" title="上一级">${xpIcon("folderUp", 16)}</button>
           <input class="nav-path" id="nav-path" type="text" spellcheck="false"
                  placeholder="输入路径跳转（支持 /home/…、~/…、\\\\wsl.localhost\\…）" value="" />
           <span class="nav-live" id="nav-live">…</span>
@@ -247,8 +233,11 @@ function showToast(text: string): void {
 // ============================ 书签面板 ============================
 
 function entryIconHtml(path: string): string {
-  const drive = /^[a-zA-Z]:\\?$/.test(path.replace(/\//g, "\\"));
-  return icon(drive ? "HardDrive" : "Folder", 15);
+  const norm = path.replace(/\//g, "\\");
+  if (/^[a-zA-Z]:\\?$/.test(norm)) return xpIcon("drive", 15);   // 盘根 → 本地磁盘
+  if (/^\\\\wsl/i.test(norm)) return xpIcon("drive", 15);         // WSL 发行版 → 本地磁盘
+  if (/^\\\\[^\\]/.test(norm)) return xpIcon("net", 15);          // UNC 共享 → 网络位置
+  return xpIcon("folder", 15);
 }
 
 function appendGroupHead(title: string, hint: string, onAdd: () => void): void {
@@ -610,11 +599,49 @@ function startClock(): void {
 }
 
 function boot(): void {
-  initFileview(); // 文件列表（自绘）：初始目录 = 上次目录，失效则猜盘根
+  initFileview(); // 文件列表（自绘）：初始目录 = 启动参数 > 上次目录 > 猜盘根
   bindEvents();
   startClock();
   refreshIcons();
   void reloadBookmarks();
+  void setupExternalOpen(); // 单实例转发 + 外部打开目录自动累计临时书签
+}
+
+// ============================ 外部打开（单实例） ============================
+
+/**
+ * 单实例管线：第二实例（qq_codex 再次双击项目标签）启动即退出，
+ * 目录通过 external-open 事件转发到这里 → 同窗口导航 + 自动累计临时书签。
+ * 本实例自己是带参启动的（第一次双击），initFileview 已导航，这里只补累计。
+ */
+async function setupExternalOpen(): Promise<void> {
+  if (!isTauri()) return;
+  await listen<string>("external-open", (event) => void openExternalDir(event.payload));
+  const argDir = await backend.startupDir().catch(() => null);
+  if (argDir) autoSessionBookmark(argDir);
+}
+
+/** 外部转发目录：同窗口打开（进后退历史）+ 累计临时书签 */
+async function openExternalDir(raw: string): Promise<void> {
+  const norm = normalizePath(raw);
+  if (!norm) return;
+  if (!(await backend.pathExists(norm).catch(() => false))) {
+    showToast(`外部打开的目录不存在：${raw}`);
+    return;
+  }
+  await gotoPath(norm);
+  autoSessionBookmark(norm);
+}
+
+/** 外部打开的目录自动进临时书签（去重，最新置顶） */
+function autoSessionBookmark(raw: string): void {
+  const path = normalizePath(raw);
+  if (!path) return;
+  const lc = (p: string) => p.replace(/\//g, "\\").toLowerCase();
+  const i = session.findIndex((e) => lc(e.path) === lc(path));
+  if (i >= 0) session.splice(i, 1);
+  session.unshift({ name: defaultName(path), path });
+  renderBookmarks();
 }
 
 boot();

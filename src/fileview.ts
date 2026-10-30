@@ -14,7 +14,7 @@
  *   #nav-back / #nav-forward 与书签高亮；导航条与书签面板的点击由 main.ts
  *   直接调 fvBack/fvForward/fvUp/navigateTo
  */
-import { createIcons, Folder, FolderUp, File, FileText, FileImage, FileArchive, FileAudio, FileVideo, FileCode, FileSpreadsheet, Cog } from "lucide";
+import { xpIcon, type XpIconName } from "./xpicons";
 
 import { backend, type DirEntryX, type OpReport } from "./backend";
 
@@ -37,29 +37,24 @@ interface MenuSpec {
 const LS_LASTDIR = "fv-lastdir";
 const LS_SORT = "fv-sort";
 
-/** 扩展名 → 图标（lucide 组件名）；目录固定 Folder，未命中落 File */
-const EXT_ICONS: Record<string, string> = {
-  png: "FileImage", jpg: "FileImage", jpeg: "FileImage", gif: "FileImage", bmp: "FileImage",
-  webp: "FileImage", ico: "FileImage", svg: "FileImage",
-  mp4: "FileVideo", mkv: "FileVideo", avi: "FileVideo", mov: "FileVideo", wmv: "FileVideo",
-  flv: "FileVideo", webm: "FileVideo", ts: "FileVideo",
-  mp3: "FileAudio", wav: "FileAudio", flac: "FileAudio", ogg: "FileAudio", m4a: "FileAudio",
-  wma: "FileAudio", mid: "FileAudio",
-  zip: "FileArchive", rar: "FileArchive", "7z": "FileArchive", tar: "FileArchive", gz: "FileArchive",
-  bz2: "FileArchive", xz: "FileArchive", iso: "FileArchive", cab: "FileArchive",
-  js: "FileCode", json: "FileCode", rs: "FileCode", py: "FileCode", c: "FileCode", cpp: "FileCode",
-  h: "FileCode", cs: "FileCode", java: "FileCode", html: "FileCode", css: "FileCode",
-  xml: "FileCode", yml: "FileCode", yaml: "FileCode", toml: "FileCode", sh: "FileCode",
-  ps1: "FileCode", bat: "FileCode", cmd: "FileCode",
-  xls: "FileSpreadsheet", xlsx: "FileSpreadsheet", csv: "FileSpreadsheet",
-  doc: "FileText", docx: "FileText", pdf: "FileText", txt: "FileText", md: "FileText",
-  rtf: "FileText", log: "FileText", ini: "FileText", cfg: "FileText",
-  exe: "Cog", msi: "Cog", dll: "Cog", sys: "Cog", scr: "Cog",
-};
-
-const FV_ICONS = {
-  Folder, FolderUp, File, FileText, FileImage, FileArchive, FileAudio, FileVideo,
-  FileCode, FileSpreadsheet, Cog,
+/** 扩展名 → 图标（XP 风）；目录固定 Folder，未命中落 File */
+const EXT_ICONS: Record<string, XpIconName> = {
+  png: "fileImage", jpg: "fileImage", jpeg: "fileImage", gif: "fileImage", bmp: "fileImage",
+  webp: "fileImage", ico: "fileImage", svg: "fileImage",
+  mp4: "fileVideo", mkv: "fileVideo", avi: "fileVideo", mov: "fileVideo", wmv: "fileVideo",
+  flv: "fileVideo", webm: "fileVideo", ts: "fileVideo",
+  mp3: "fileAudio", wav: "fileAudio", flac: "fileAudio", ogg: "fileAudio", m4a: "fileAudio",
+  wma: "fileAudio", mid: "fileAudio",
+  zip: "fileArchive", rar: "fileArchive", "7z": "fileArchive", tar: "fileArchive", gz: "fileArchive",
+  bz2: "fileArchive", xz: "fileArchive", iso: "fileArchive", cab: "fileArchive",
+  js: "fileCode", json: "fileCode", rs: "fileCode", py: "fileCode", c: "fileCode", cpp: "fileCode",
+  h: "fileCode", cs: "fileCode", java: "fileCode", html: "fileCode", css: "fileCode",
+  xml: "fileCode", yml: "fileCode", yaml: "fileCode", toml: "fileCode", sh: "fileCode",
+  ps1: "fileCode", bat: "fileCode", cmd: "fileCode",
+  xls: "fileSheet", xlsx: "fileSheet", csv: "fileSheet",
+  doc: "fileText", docx: "fileText", pdf: "fileText", txt: "fileText", md: "fileText",
+  rtf: "fileText", log: "fileText", ini: "fileText", cfg: "fileText",
+  exe: "app", msi: "app", dll: "app", sys: "app", scr: "app",
 };
 
 // ============================ 模块状态 ============================
@@ -404,16 +399,16 @@ function cmpName(a: DirEntryX, b: DirEntryX): number {
 
 // ============================ 渲染 ============================
 
-function iconFor(e: DirEntryX): string {
-  if (e.isDir) return "Folder";
-  return EXT_ICONS[e.ext] ?? "File";
+function iconFor(e: DirEntryX): XpIconName {
+  if (e.isDir) return "folder";
+  return EXT_ICONS[e.ext] ?? "fileGeneric";
 }
 
 function render(): void {
   if (!root || !body) return;
   const rows: string[] = [];
   rows.push(
-    `<div class="file-row file-up" data-up="1" title="上一级"><span class="fr-cell fr-name"><span class="fr-icon"><i data-lucide="FolderUp"></i></span><span class="fr-text">..</span></span><span class="fr-cell fr-size"></span><span class="fr-cell fr-mtime"></span></div>`,
+    `<div class="file-row file-up" data-up="1" title="上一级"><span class="fr-cell fr-name"><span class="fr-icon">${xpIcon("folderUp")}</span><span class="fr-text">..</span></span><span class="fr-cell fr-size"></span><span class="fr-cell fr-mtime"></span></div>`,
   );
   if (entries.length === 0) {
     rows.push(`<div class="fv-empty">（空文件夹）</div>`);
@@ -423,11 +418,10 @@ function render(): void {
     const cut = clipboard?.mode === "cut" && clipboard.paths.includes(join(curPath, e.name)) ? " cut" : "";
     const name = escapeHtml(e.name);
     rows.push(
-      `<div class="file-row${sel}${cut}" data-name="${name}"><span class="fr-cell fr-name"><span class="fr-icon"><i data-lucide="${iconFor(e)}"></i></span><span class="fr-text" title="${name}">${name}</span></span><span class="fr-cell fr-size">${fmtSize(e)}</span><span class="fr-cell fr-mtime">${fmtMtime(e.mtimeMs)}</span></div>`,
+      `<div class="file-row${sel}${cut}" data-name="${name}"><span class="fr-cell fr-name"><span class="fr-icon">${xpIcon(iconFor(e))}</span><span class="fr-text" title="${name}">${name}</span></span><span class="fr-cell fr-size">${fmtSize(e)}</span><span class="fr-cell fr-mtime">${fmtMtime(e.mtimeMs)}</span></div>`,
     );
   }
   body.innerHTML = rows.join("");
-  createIcons({ icons: FV_ICONS });
   syncHead();
   // 键盘焦点兜底：列表可直接吃快捷键（不抢重命名输入框的焦点）
   if (document.activeElement === document.body || document.activeElement === root) {
