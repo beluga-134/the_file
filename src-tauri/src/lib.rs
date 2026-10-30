@@ -1,0 +1,74 @@
+//! the_file 文件管理器（原 TE Host PoC，2026-10-30 去嵌入定稿）。
+//!
+//! 架构：Tauri 壳 + WebView 自绘文件列表（src/fileview.ts，类比 xterm.js 打法）
+//! + Rust fileops（fileops.rs，目录数据与文件操作）。
+//! Tablacus Explorer 软嵌入通道已整体移除；原 TE64 运行时归档于仓库根
+//! te64-runtime.tar.zst（恢复即解包，main 分支历史里亦有完整源文件）。
+//!
+//! 宿主侧仅剩一个非 fileops 命令：read_bookmarks——读取 config/bookmarks.json
+//! （书签面板数据源）。路径定位规则：从 exe（打包形态，位于仓库根）或
+//! crate manifest（dev 形态，src-tauri/target/…）逐级上溯找 config/bookmarks.json。
+
+mod fileops;
+
+use std::path::PathBuf;
+
+// ============================ 书签文件定位 ============================
+
+/// 逐级上溯（最多 8 跳）找 config/bookmarks.json；exe 与 manifest 两个起点取先命中。
+/// 部署形态：the_file.exe 与 config/ 同级，一跳即中；
+/// dev 形态：src-tauri/target/{release,debug} → src-tauri → 仓库根。
+fn bookmarks_path() -> Option<PathBuf> {
+    let mut starts: Vec<PathBuf> = Vec::new();
+    if let Ok(exe) = std::env::current_exe() {
+        if let Some(dir) = exe.parent() {
+            starts.push(dir.to_path_buf());
+        }
+    }
+    starts.push(PathBuf::from(env!("CARGO_MANIFEST_DIR")));
+
+    for start in starts {
+        let mut cur = Some(start.as_path());
+        let mut hops = 0;
+        while let Some(dir) = cur {
+            let p = dir.join("config").join("bookmarks.json");
+            if p.is_file() {
+                return Some(p);
+            }
+            hops += 1;
+            if hops > 8 {
+                break;
+            }
+            cur = dir.parent();
+        }
+    }
+    None
+}
+
+// ============================ Tauri commands ============================
+
+/// 书签 JSON 原文（config/bookmarks.json；找不到/读不了返回 None，前端 toast）
+#[tauri::command]
+fn read_bookmarks() -> Option<String> {
+    bookmarks_path().and_then(|p| std::fs::read_to_string(p).ok())
+}
+
+// ============================ 应用入口 ============================
+
+#[cfg_attr(mobile, tauri::mobile_entry_point)]
+pub fn run() {
+    tauri::Builder::default()
+        .invoke_handler(tauri::generate_handler![
+            read_bookmarks,
+            fileops::dir_list,
+            fileops::shell_open,
+            fileops::open_with_dialog,
+            fileops::file_paste,
+            fileops::file_delete,
+            fileops::file_rename,
+            fileops::dir_create,
+            fileops::path_exists,
+        ])
+        .run(tauri::generate_context!())
+        .expect("error while running the_file");
+}

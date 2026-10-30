@@ -1,31 +1,58 @@
 # the_file
 
-[Tablacus Explorer](https://github.com/tablacus/TablacusExplorer) 的个人定制版。
-原作由 **Gaku** 开发（MIT License），向原作者致敬 🙏——这个 11KB exe + 明文脚本、
-跑了十几年依然轻量的文件管理器，是"本地壳 + Web UI + 插件化"架构的最佳实践之一。
+轻量 Windows 文件管理器：**Tauri 壳 + WebView 自绘文件列表**（XP 观感）。
+由 [Tablacus Explorer](https://github.com/tablacus/TablacusExplorer)（Gaku，MIT）个人定制版演进而来——
+原“Tauri 壳软嵌入 TE64 文件列表”的架构已于 2026-10-30 完成"去嵌入"切换：
+文件列表完全自绘（前端 TypeScript），Rust 只做目录数据与文件操作，
+不再依赖 TE64.exe 进程。原 TE 运行时已归档（见文末）。
 
-上游项目：https://github.com/tablacus/TablacusExplorer （te26.9.20 基线）
+## 运行
 
-## 本仓库的定制
+```
+the_file.exe          # 双击即用（需 WebView2 Runtime，Win10/11 自带）
+config\bookmarks.json # 左侧书签面板数据源，改文件后点"查看→刷新书签"生效
+```
 
-- **标签栏放左侧竖排**（`config/addons.xml`：tabplus `Align="2" Width="180"`，带关闭按钮/盘符图标/工具提示）
-- 精简 32 位二进制（TE32/te32.dll/tewv32.dll）与多余语言文件，只保留 简中/繁中/英文
-- 清除运行时浏览历史状态（remember/closedtabs/window1，启动自动重建）
+## 功能
 
-## 怎么改 UI
+- 左栏书签分组面板（`config/bookmarks.json`，`分组名: [路径…]`）
+- 迷你导航条：← → ↑ + 当前路径 + 条目计数
+- 自绘文件列表：单击/Ctrl/Shift 多选、双击打开、**F2 行内重命名**、
+  Delete/Shift+Delete 删除（回收站/永久）、Ctrl+C/X/V 剪贴板、Ctrl+A、
+  右键菜单（打开方式…/粘贴/新建文件夹）、表头三列排序、自然排序（file2 < file10）
+- 上次目录记忆（localStorage）；自绘 XP 风标题栏 + 八向窗口拉伸
 
-所有 UI 都是明文，无编译环节，记事本保存即"发布"：
+## 架构
 
-| 想改 | 文件 |
+| 层 | 选型 |
 |---|---|
-| 标签条 | `addons/tabplus/script.js` |
-| 菜单/工具栏/地址栏 | `addons/<对应插件>/script.js` |
-| 布局骨架/样式 | `script/index.html` `script/index.css` |
-| 右键菜单/快捷键/手势 | `config/menus.xml` `key.xml` `mouse.xml`（工具菜单"重新加载自定义"即时生效） |
-| 布局预设（官方自带左/右/底标签等） | `layout/*.xml`，工具菜单 → 载入布局 |
+| 壳 | Tauri 2.11.5 + WebView2，`decorations:false` 自绘标题栏 |
+| 文件列表 | `src/fileview.ts` 自绘（类比 xterm.js 之于终端），零原生控件、零嵌入 |
+| 文件操作 | `src-tauri/src/fileops.rs`：ShellExecuteW / SHOpenWithDialog / SHFileOperationW（回收站）等 |
+| 书签 | `src-tauri/src/lib.rs` read_bookmarks：从 exe 逐级上溯定位 `config/bookmarks.json` |
 
-文件列表本体是原生 shell 控件（性能担当），标题栏/右键弹出菜单是系统渲染，不在可改范围。
+## 开发与构建（Windows 侧）
+
+```bat
+scripts\dev.ps1     :: tauri dev（热更新）
+scripts\build.ps1   :: npm build + cargo release → the_file.exe
+scripts\check.ps1   :: 仅 cargo check
+scripts\verify.ps1  :: 启动 exe + 自动截图验证
+```
+
+依赖：WebView2 Runtime、Node、Rust + MSVC Build Tools（`qq_codex/scripts/env.ps1` 自动探测）。
+
+## TE64 运行时归档（te64-runtime.tar.zst）
+
+原 Tablacus Explorer 定制版（含左侧竖排标签栏、roster 花名册、无边框 te64.dll、
+hostbridge 嵌入插件及整套调试记录）打包在本目录 `te64-runtime.tar.zst`（本地文件，不入库；
+完整源文件亦见本仓库 `main` 分支）。恢复方法：
+
+```
+tar --zstd -xf te64-runtime.tar.zst -C the_wenjian
+TE64.exe
+```
 
 ## License
 
-MIT，见 [LICENSE](LICENSE)。包含 Tablacus Explorer 原项目（Gaku）的代码与资源。
+MIT，见 [LICENSE](LICENSE)。含 Tablacus Explorer 原项目（Gaku）代码与资源的派生历史。

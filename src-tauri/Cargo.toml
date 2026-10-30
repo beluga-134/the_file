@@ -1,0 +1,30 @@
+[package]
+name = "the_file"
+version = "0.2.0"
+description = "the_file file manager: Tauri shell + self-drawn WebView file list (Tablacus embed removed)"
+edition = "2021"
+
+[lib]
+name = "the_file_lib"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[build-dependencies]
+tauri-build = { version = "2.6.3", features = [] }
+
+[dependencies]
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+# 锁定与 qq_codex 完全一致的 tauri 2.11.5（其 windows crate 是 0.61.3，
+# 若故息 semver 上浮到 2.12.x 会拉入 windows 0.62 与下方依赖形成双版本、HWND 类型冲突）
+tauri = { version = "=2.11.5", features = [] }
+# fileops 的 dir_list/file_paste/file_delete 用 spawn_blocking 防慢目录阻塞主线程
+tokio = { version = "1", features = ["rt"] }
+
+[target.'cfg(target_os = "windows")'.dependencies]
+# 版本对齐 qq_codex Cargo.lock 中的 windows 0.61.3，避免两套 sys crate
+# （fileops.rs 的 ShellExecuteW / SHOpenWithDialog / SHFileOperationW 需要）
+windows = { version = "0.61", features = [
+    "Win32_Foundation",
+    "Win32_UI_WindowsAndMessaging",
+    "Win32_UI_Shell",
+] }

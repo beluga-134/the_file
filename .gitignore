@@ -1,0 +1,10 @@
+node_modules/
+dist/
+src-tauri/target/
+src-tauri/gen/
+*.log
+*.json.tmp
+the_file.exe
+te64-runtime.tar.zst
+.pi/
+verify-shot*.png

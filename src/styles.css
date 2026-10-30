@@ -1,0 +1,888 @@
+/* ============================================================
+ * TE Host PoC（重构版）样式
+ * 观感对齐 qq_codex（OICQ 2003 Desktop）：XP 蓝标题栏 / 灰面板 /
+ * roster 书签栏 / 状态栏；右栏为迷你导航条 + TE 文件列表（软嵌入 HWND）
+ * 旧 PoC 的聊天/终端样式已随视图一并移除。
+ * ============================================================ */
+
+@font-face {
+  font-family: "WQY UI Fallback";
+  src: url("./assets/fonts/wqy-zenhei-sharp.woff2") format("woff2");
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+}
+
+:root {
+  font-family: "Microsoft YaHei UI", "Microsoft YaHei", "Noto Sans CJK SC", "WenQuanYi Zen Hei", "Segoe UI", "WQY UI Fallback", sans-serif;
+  color: #000000;
+  background: #3a6ea5;
+  font-synthesis: none;
+  text-rendering: geometricPrecision;
+  --control: #ece9d8;
+  --control-light: #ffffff;
+  --control-mid: #aca899;
+  --control-dark: #716f64;
+  --title-blue: #0050ee;
+  --title-deep: #003dd7;
+  --selection: #316ac5;
+  --input-border: #7f9db9;
+  --paper: #fffdf3;
+  --online: #20a73a;
+  --focus: #000000;
+  --mono-font: "Cascadia Mono", "JetBrains Mono", "Noto Sans Mono CJK SC", "WenQuanYi Micro Hei Mono", "Ubuntu Mono", Consolas, "Liberation Mono", monospace;
+}
+
+* {
+  box-sizing: border-box;
+  letter-spacing: 0;
+}
+
+html,
+body,
+#app {
+  width: 100%;
+  height: 100%;
+  min-width: 0;
+  min-height: 0;
+  margin: 0;
+  overflow: hidden;
+}
+
+body {
+  font-size: 13px;
+  line-height: 18px;
+  background-color: #3a6ea5;
+  background-image: repeating-linear-gradient(
+    135deg,
+    rgba(255, 255, 255, 0.025) 0,
+    rgba(255, 255, 255, 0.025) 1px,
+    rgba(0, 0, 0, 0.018) 1px,
+    rgba(0, 0, 0, 0.018) 3px
+  );
+  -webkit-font-smoothing: antialiased;
+  text-rendering: geometricPrecision;
+}
+
+button,
+input,
+textarea {
+  font: inherit;
+  color: inherit;
+}
+
+button {
+  border: 0;
+}
+
+button:focus-visible,
+input:focus-visible,
+textarea:focus-visible,
+[tabindex]:focus-visible {
+  outline: 1px dotted var(--focus);
+  outline-offset: -3px;
+}
+
+button:disabled {
+  color: #8d8a7f;
+  text-shadow: 1px 1px #ffffff;
+  cursor: default;
+}
+
+svg {
+  display: block;
+  flex: 0 0 auto;
+  width: 1em;
+  height: 1em;
+  stroke-width: 2;
+}
+
+/* ============================ 外壳 ============================ */
+
+.app-shell {
+  position: relative;
+  display: grid;
+  grid-template-rows: 30px 24px minmax(0, 1fr) 22px;
+  width: 100%;
+  height: 100%;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+  border: 3px solid var(--title-blue);
+  border-top-color: #1678ff;
+  border-radius: 7px 7px 0 0;
+  background: var(--control);
+  box-shadow:
+    0 0 0 1px #00379f,
+    4px 5px 11px rgba(0, 22, 70, 0.42);
+}
+
+.app-shell.window-maximized {
+  border-radius: 0;
+  box-shadow: none;
+}
+
+/* ---- 自绘标题栏（XP 蓝） ---- */
+
+.xp-titlebar {
+  position: relative;
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-width: 0;
+  height: 27px;
+  margin: -3px -3px 0;
+  padding: 3px 4px 2px 6px;
+  border: 1px solid #003bb5;
+  border-top: 1px solid #5cb5ff;
+  border-radius: 6px 6px 0 0;
+  color: #ffffff;
+  background: linear-gradient(
+    180deg,
+    #0997ff 0,
+    #0053ee 11%,
+    #0050ee 43%,
+    #0066ff 86%,
+    #005bff 94%,
+    #003dd7 100%
+  );
+  box-shadow: inset 1px 0 rgba(255, 255, 255, 0.32);
+  user-select: none;
+  cursor: move;
+  touch-action: none;
+}
+
+.window-title {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+  gap: 5px;
+  overflow: hidden;
+  font-size: 13px;
+  line-height: 19px;
+  font-weight: 700;
+  text-shadow: 1px 1px #08348f;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.title-icon {
+  display: grid;
+  place-items: center;
+  width: 18px;
+  height: 18px;
+  border: 1px solid rgba(255, 255, 255, 0.72);
+  background: #ffffff;
+}
+
+.title-icon svg {
+  color: #e8a33d; /* 文件夹黄，与 exe 图标呼应 */
+}
+
+.window-controls {
+  display: flex;
+  flex: 0 0 auto;
+  gap: 2px;
+  align-items: center;
+  height: 23px;
+  cursor: default;
+}
+
+.window-button {
+  display: grid;
+  place-items: center;
+  width: 21px;
+  height: 21px;
+  padding: 0;
+  border: 1px solid #ffffff;
+  border-right-color: #002c9b;
+  border-bottom-color: #002c9b;
+  border-radius: 3px;
+  color: #ffffff;
+  background: linear-gradient(135deg, #78bcff 0, #1a68e5 48%, #0750c6 100%);
+  box-shadow: inset 1px 1px rgba(255, 255, 255, 0.38);
+}
+
+.window-button:hover {
+  border-color: #fff6a6 #4f3a00 #4f3a00 #fff6a6;
+}
+
+.window-button:active {
+  padding: 1px 0 0 1px;
+  border-color: #002c9b #ffffff #ffffff #002c9b;
+  box-shadow: inset 1px 1px rgba(0, 24, 105, 0.5);
+}
+
+.window-button.close {
+  background: linear-gradient(135deg, #f59a78 0, #e54b2f 45%, #b62215 100%);
+}
+
+/* ---- 菜单栏 ---- */
+
+.menu-bar {
+  position: relative;
+  z-index: 12;
+  display: flex;
+  align-items: stretch;
+  height: 24px;
+  padding: 1px 4px;
+  border-bottom: 1px solid var(--control-dark);
+  background: var(--control);
+  box-shadow: inset 0 -1px var(--control-light);
+}
+
+.menu-trigger {
+  min-width: 54px;
+  height: 21px;
+  padding: 1px 7px 2px;
+  background: transparent;
+  text-align: center;
+}
+
+.menu-trigger:hover,
+.menu-trigger[aria-expanded="true"] {
+  padding: 0 6px 1px;
+  border: 1px solid #e5a700;
+  background: #fff3c8;
+}
+
+/* ============================ 工作区 ============================ */
+
+.workspace {
+  display: grid;
+  grid-template-columns: 240px 4px minmax(0, 1fr);
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.workspace-splitter {
+  position: relative;
+  z-index: 2;
+  border-left: 1px solid var(--control-light);
+  border-right: 1px solid var(--control-dark);
+  background: var(--control);
+}
+
+/* ---- 左栏：书签面板 ---- */
+
+.roster-pane {
+  display: grid;
+  grid-template-rows: 30px minmax(0, 1fr);
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+  border-right: 1px solid var(--control-mid);
+  background: var(--control);
+}
+
+.bookmark-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 4px;
+  padding: 0 5px 0 8px;
+  border-bottom: 1px solid #c5d5e2;
+  color: #153c69;
+  background: linear-gradient(180deg, #f6fbff, #d8e8f4);
+  font-weight: 700;
+  text-shadow: 1px 1px #ffffff;
+}
+
+.bookmark-head-title {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.bookmark-refresh {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 22px;
+  height: 20px;
+  border: 1px solid var(--control-mid);
+  border-right-color: var(--control-dark);
+  border-bottom-color: var(--control-dark);
+  border-radius: 3px;
+  color: #173f72;
+  background: var(--control);
+}
+
+.bookmark-refresh:hover {
+  border-color: #e5a700;
+  background: #fff3c8;
+}
+
+.bookmark-refresh:active {
+  padding-top: 1px;
+}
+
+.bookmark-list {
+  min-height: 0;
+  overflow-y: auto;
+  background: #ffffff;
+}
+
+.bookmark-group-head {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  height: 24px;
+  padding: 2px 8px 2px 7px;
+  overflow: hidden;
+  border-bottom: 1px solid #c5d5e2;
+  color: #153c69;
+  background: linear-gradient(180deg, #f6fbff, #d8e8f4);
+  text-align: left;
+  font-weight: 700;
+  text-shadow: 1px 1px #ffffff;
+  white-space: nowrap;
+}
+
+.bookmark-item {
+  display: grid;
+  grid-template-columns: 26px minmax(0, 1fr);
+  align-items: center;
+  width: 100%;
+  height: 40px;
+  padding: 3px 6px 3px 7px;
+  overflow: hidden;
+  border-bottom: 1px solid #edf0f2;
+  background: #ffffff;
+  text-align: left;
+}
+
+.bookmark-item:hover:not(.active) {
+  background: #eaf2fb;
+}
+
+.bookmark-item.active {
+  color: #ffffff;
+  background: var(--selection);
+}
+
+.bookmark-item.active .bookmark-path {
+  color: #dbe7f7;
+}
+
+.bookmark-icon {
+  display: grid;
+  place-items: center;
+  color: #d99a1b;
+}
+
+.bookmark-item.active .bookmark-icon {
+  color: #ffe9a8;
+}
+
+.bookmark-copy {
+  display: grid;
+  min-width: 0;
+  gap: 1px;
+}
+
+.bookmark-name {
+  overflow: hidden;
+  font-weight: 700;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.bookmark-path {
+  overflow: hidden;
+  color: #7c8894;
+  font: 10px/1.4 var(--mono-font);
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.bookmark-empty {
+  padding: 10px 8px;
+  color: #8a94a0;
+  line-height: 1.6;
+}
+
+/* ---- 右栏：导航条 + 自绘文件列表 ---- */
+
+.file-pane {
+  display: grid;
+  grid-template-rows: 30px minmax(0, 1fr);
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+  background: var(--control);
+}
+
+.file-navbar {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  height: 30px;
+  padding: 2px 5px;
+  border-bottom: 1px solid var(--control-dark);
+  box-shadow: inset 0 -1px var(--control-light);
+}
+
+.nav-btn {
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 22px;
+  padding: 0;
+  border: 1px solid var(--control-mid);
+  border-right-color: var(--control-dark);
+  border-bottom-color: var(--control-dark);
+  border-radius: 3px;
+  color: #173f72;
+  background: var(--control);
+}
+
+.nav-btn:hover:not(:disabled) {
+  border-color: #e5a700;
+  background: #fff3c8;
+}
+
+.nav-btn:active:not(:disabled) {
+  padding-top: 1px;
+}
+
+.nav-path {
+  flex: 1;
+  min-width: 0;
+  margin-left: 4px;
+  padding: 1px 6px;
+  overflow: hidden;
+  border: 1px solid var(--input-border);
+  border-radius: 2px;
+  background: var(--paper);
+  color: #1d2428;
+  font-family: var(--mono-font);
+  font-size: 12px;
+  line-height: 18px;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  user-select: text;
+}
+
+.nav-live {
+  flex: none;
+  padding: 1px 6px;
+  border: 1px solid #b8c4cc;
+  border-radius: 3px;
+  background: #eef3f7;
+  color: #4a5a66;
+  font: 10px/1.5 Consolas, monospace;
+  letter-spacing: 0.5px;
+}
+
+.nav-live.ok {
+  border-color: #9ecfa9;
+  background: #e8f7ec;
+  color: #1e6f34;
+}
+
+/* ============================ 状态栏 ============================ */
+
+.status-bar {
+  display: grid;
+  grid-template-columns: 235px minmax(0, 1fr) 82px;
+  gap: 2px;
+  height: 22px;
+  padding: 2px 1px 1px;
+  border-top: 1px solid var(--control-light);
+  background: var(--control);
+}
+
+.status-pane {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+  height: 18px;
+  padding: 0 5px;
+  overflow: hidden;
+  border: 1px solid var(--control-mid);
+  border-right-color: var(--control-light);
+  border-bottom-color: var(--control-light);
+  color: #565650;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.status-pane.connection {
+  gap: 5px;
+}
+
+.connection-lamp {
+  flex: 0 0 auto;
+  width: 7px;
+  height: 7px;
+  border: 1px solid #8b6d2f;
+  background: #d9c98a;
+}
+
+.connection-lamp.ok {
+  border-color: #256334;
+  background: var(--online);
+}
+
+.status-pane.path {
+  font-family: var(--mono-font);
+  font-size: 11px;
+}
+
+.status-pane.clock {
+  justify-content: center;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ============================ 弹层 ============================ */
+
+.popup-menu {
+  position: fixed;
+  z-index: 100;
+  width: 200px;
+  padding: 2px;
+  border: 1px solid var(--control-light);
+  border-right-color: #242424;
+  border-bottom-color: #242424;
+  background: var(--control);
+  box-shadow:
+    inset 1px 1px var(--control-mid),
+    2px 2px 3px rgba(0, 0, 0, 0.32);
+}
+
+.popup-menu button {
+  display: block;
+  width: 100%;
+  height: 23px;
+  padding: 2px 22px;
+  overflow: hidden;
+  background: transparent;
+  text-align: left;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.popup-menu button:hover:not(:disabled) {
+  color: #ffffff;
+  background: var(--selection);
+}
+
+.popup-menu[hidden],
+.toast[hidden] {
+  display: none;
+}
+
+.toast {
+  position: fixed;
+  z-index: 120;
+  right: 12px;
+  bottom: 29px;
+  max-width: min(340px, calc(100vw - 24px));
+  padding: 6px 9px;
+  border: 1px solid #000000;
+  background: #ffffe1;
+  box-shadow: 2px 2px 4px rgba(0, 0, 0, 0.28);
+  color: #202020;
+}
+
+/* ============================ 窗口缩放手柄 ============================ */
+
+.resize-handle {
+  position: absolute;
+  z-index: 90;
+  display: block;
+  touch-action: none;
+  user-select: none;
+}
+
+.window-maximized .resize-handle {
+  display: none;
+}
+
+.resize-n,
+.resize-s {
+  right: 8px;
+  left: 8px;
+  height: 5px;
+}
+
+.resize-e,
+.resize-w {
+  top: 8px;
+  bottom: 8px;
+  width: 5px;
+}
+
+.resize-n {
+  top: 0;
+  cursor: n-resize;
+}
+
+.resize-ne {
+  top: 0;
+  right: 0;
+  width: 9px;
+  height: 9px;
+  cursor: ne-resize;
+}
+
+.resize-e {
+  right: 0;
+  cursor: e-resize;
+}
+
+.resize-se {
+  right: 0;
+  bottom: 0;
+  width: 9px;
+  height: 9px;
+  cursor: se-resize;
+}
+
+.resize-s {
+  bottom: 0;
+  cursor: s-resize;
+}
+
+.resize-sw {
+  bottom: 0;
+  left: 0;
+  width: 9px;
+  height: 9px;
+  cursor: sw-resize;
+}
+
+.resize-w {
+  left: 0;
+  cursor: w-resize;
+}
+
+.resize-nw {
+  top: 0;
+  left: 0;
+  width: 9px;
+  height: 9px;
+  cursor: nw-resize;
+}
+
+/* ============================ 滚动条 ============================ */
+
+* {
+  scrollbar-color: #b9b6aa #f1f0e8;
+  scrollbar-width: auto;
+}
+
+::-webkit-scrollbar {
+  width: 16px;
+  height: 16px;
+}
+
+::-webkit-scrollbar-track {
+  border: 1px solid #d1cec0;
+  background: #f1f0e8;
+}
+
+::-webkit-scrollbar-thumb {
+  min-height: 24px;
+  border: 1px solid #ffffff;
+  border-right-color: var(--control-dark);
+  border-bottom-color: var(--control-dark);
+  background: var(--control);
+  box-shadow: inset -1px -1px var(--control-mid);
+}
+
+/* ============================================================
+ * 自绘文件视图（fileview.ts）：XP 资源管理器观感
+ * —— 白底、隔行 #f6f9fc、选中 #316ac5 白字、表头渐变同 bookmark-group-head。
+ * 占据 file-pane 网格第 2 行（第 1 行是导航条）。
+ * ============================================================ */
+
+.file-list {
+  display: grid;
+  grid-row: 2;
+  grid-column: 1;
+  grid-template-rows: 24px minmax(0, 1fr);
+  margin: 4px 5px 5px;
+  overflow: hidden;
+  border: 1px solid var(--input-border);
+  border-top-color: #536b7d;
+  border-left-color: #536b7d;
+  background: #ffffff;
+  box-shadow: inset 1px 1px #d8d8d0;
+  outline: none; /* 键盘焦点落在容器上，不画焦点框（选中态已有反馈） */
+}
+
+/* ---- 表头（点击排序，箭头指示当前列/方向） ---- */
+
+.file-head {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 90px 150px;
+  overflow: hidden;
+  border-bottom: 1px solid #c5d5e2;
+  color: #153c69;
+  background: linear-gradient(180deg, #f6fbff, #d8e8f4);
+  font-weight: 700;
+  text-shadow: 1px 1px #ffffff;
+  user-select: none;
+}
+
+.fh-cell {
+  min-width: 0;
+  overflow: hidden;
+  padding: 3px 8px;
+  border-right: 1px solid #c5d5e2;
+  background: transparent;
+  text-align: left;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.fh-cell:last-child {
+  border-right: 0;
+}
+
+.fh-cell:hover {
+  background: #e8f1fa;
+}
+
+.fh-name {
+  padding-left: 28px; /* 对齐行内图标列 */
+}
+
+.fh-size {
+  text-align: right;
+}
+
+.fh-cell .fh-arrow {
+  font-size: 10px;
+}
+
+.fh-cell .fh-arrow::after {
+  content: "";
+}
+
+.fh-cell.sorted-asc .fh-arrow::after {
+  content: " ▲";
+}
+
+.fh-cell.sorted-desc .fh-arrow::after {
+  content: " ▼";
+}
+
+/* ---- 行区（滚动） ---- */
+
+.file-body {
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  background: #ffffff;
+}
+
+.file-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 90px 150px;
+  align-items: center;
+  height: 22px;
+  overflow: hidden;
+  cursor: default;
+  user-select: none;
+  white-space: nowrap;
+}
+
+.file-row:nth-child(even) {
+  background: #f6f9fc; /* 隔行 */
+}
+
+.file-row:hover {
+  background: #eaf2fb;
+}
+
+.file-row.sel {
+  color: #ffffff;
+  background: var(--selection);
+}
+
+.file-row.sel .fr-size,
+.file-row.sel .fr-mtime {
+  color: #dbe7f7;
+}
+
+.file-row.cut {
+  opacity: 0.45; /* 剪切来源行半透明 */
+}
+
+.fr-name {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+  padding-left: 4px;
+}
+
+.fr-icon {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 20px;
+  color: #d99a1b; /* 目录金黄，同书签图标 */
+}
+
+.file-row:not(.file-up) .fr-icon {
+  color: #4a7ba6; /* 文件图标蓝灰 */
+}
+
+.file-row.sel .fr-icon {
+  color: #ffe9a8;
+}
+
+.fr-text {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.fr-size,
+.fr-mtime {
+  overflow: hidden;
+  color: #5c6a76;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.fr-size {
+  padding-right: 10px;
+  text-align: right;
+}
+
+.fr-mtime {
+  padding-right: 8px;
+}
+
+/* 行内重命名输入框（F2） */
+.fv-rename {
+  flex: 1;
+  min-width: 0;
+  height: 17px;
+  padding: 0 3px;
+  border: 1px solid var(--input-border);
+  background: #ffffff;
+  color: #000000;
+  font-size: 12px;
+  line-height: 15px;
+}
+
+/* 空目录占位 */
+.fv-empty {
+  padding: 14px 10px 0 34px;
+  color: #8a94a0;
+}
