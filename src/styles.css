@@ -31,6 +31,76 @@
   --online: #20a73a;
   --focus: #000000;
   --mono-font: "Cascadia Mono", "JetBrains Mono", "Noto Sans Mono CJK SC", "WenQuanYi Micro Hei Mono", "Ubuntu Mono", Consolas, "Liberation Mono", monospace;
+
+  /* ---- 皮肤 token（XP 默认值；[data-theme="glass"] 覆盖为黑色玻璃） ---- */
+  --body-bg: #3a6ea5;
+  --body-stripes: repeating-linear-gradient(
+    135deg,
+    rgba(255, 255, 255, 0.025) 0,
+    rgba(255, 255, 255, 0.025) 1px,
+    rgba(0, 0, 0, 0.018) 1px,
+    rgba(0, 0, 0, 0.018) 3px
+  );
+  --shell-bg: var(--control);
+  --shell-top-border: #1678ff;
+  --shell-radius: 7px 7px 0 0;
+  --shell-shadow: 0 0 0 1px #00379f, 4px 5px 11px rgba(0, 22, 70, 0.42);
+  --titlebar-grad: linear-gradient(
+    180deg,
+    #0997ff 0,
+    #0053ee 11%,
+    #0050ee 43%,
+    #0066ff 86%,
+    #005bff 94%,
+    #003dd7 100%
+  );
+  --titlebar-border: 1px solid #003bb5;
+  --titlebar-border-top: #5cb5ff;
+  --title-text-shadow: 1px 1px #08348f;
+  --hover-border: #e5a700;
+  --hover-bg: #fff3c8;
+  --head-grad: linear-gradient(180deg, #f6fbff, #d8e8f4);
+  --head-text: #153c69;
+  --head-border: #c5d5e2;
+  --head-shadow: 1px 1px #ffffff;
+  --btn-accent-text: #173f72;
+  --list-bg: #ffffff;
+  --list-alt: #f6f9fc;
+  --list-hover: #eaf2fb;
+  --list-border: var(--input-border);
+  --list-border-top: #536b7d;
+  --list-border-left: #536b7d;
+  --list-inner-shadow: inset 1px 1px #d8d8d0;
+  --sel-secondary-text: #dbe7f7;
+  --row-meta-text: #5c6a76;
+  --divider: #edf0f2;
+  --bm-path-text: #7c8894;
+  --bm-empty-text: #8a94a0;
+  --input-bg: #ffffff;
+  --input-text: #1d2428;
+  --toast-bg: #ffffe1;
+  --toast-text: #202020;
+  --toast-border: #000000;
+  --overlay-bg: rgba(31, 47, 61, 0.35);
+  --edit-border: #0a3c7c;
+  --edit-title-grad: linear-gradient(180deg, #3f8cf3, #1054bb 45%, #0a45a1);
+  --edit-title-shadow: 1px 1px #08348f;
+  --popup-side-border: #242424;
+  --status-text: #565650;
+  --scroll-track: #f1f0e8;
+  --scroll-track-border: #d1cec0;
+  --scroll-thumb-border: #ffffff;
+  --lamp-bg: #d9c98a;
+  --lamp-border: #8b6d2f;
+  --live-bg: #eef3f7;
+  --live-border: #b8c4cc;
+  --live-text: #4a5a66;
+  --live-ok-bg: #e8f7ec;
+  --live-ok-border: #9ecfa9;
+  --live-ok-text: #1e6f34;
+  --del-hover-border: #c98f8f;
+  --del-hover-bg: #fdeaea;
+  --del-hover-text: #8c2f2f;
 }
 
 * {
@@ -52,14 +122,8 @@ body,
 body {
   font-size: 13px;
   line-height: 18px;
-  background-color: #3a6ea5;
-  background-image: repeating-linear-gradient(
-    135deg,
-    rgba(255, 255, 255, 0.025) 0,
-    rgba(255, 255, 255, 0.025) 1px,
-    rgba(0, 0, 0, 0.018) 1px,
-    rgba(0, 0, 0, 0.018) 3px
-  );
+  background-color: var(--body-bg);
+  background-image: var(--body-stripes);
   -webkit-font-smoothing: antialiased;
   text-rendering: geometricPrecision;
 }
@@ -109,12 +173,10 @@ svg {
   min-height: 0;
   overflow: hidden;
   border: 3px solid var(--title-blue);
-  border-top-color: #1678ff;
-  border-radius: 7px 7px 0 0;
-  background: var(--control);
-  box-shadow:
-    0 0 0 1px #00379f,
-    4px 5px 11px rgba(0, 22, 70, 0.42);
+  border-top-color: var(--shell-top-border);
+  border-radius: var(--shell-radius);
+  background: var(--shell-bg);
+  box-shadow: var(--shell-shadow);
 }
 
 .app-shell.window-maximized {
@@ -134,19 +196,11 @@ svg {
   height: 27px;
   margin: -3px -3px 0;
   padding: 3px 4px 2px 6px;
-  border: 1px solid #003bb5;
-  border-top: 1px solid #5cb5ff;
+  border: var(--titlebar-border);
+  border-top: 1px solid var(--titlebar-border-top);
   border-radius: 6px 6px 0 0;
   color: #ffffff;
-  background: linear-gradient(
-    180deg,
-    #0997ff 0,
-    #0053ee 11%,
-    #0050ee 43%,
-    #0066ff 86%,
-    #005bff 94%,
-    #003dd7 100%
-  );
+  background: var(--titlebar-grad);
   box-shadow: inset 1px 0 rgba(255, 255, 255, 0.32);
   user-select: none;
   cursor: move;
@@ -162,7 +216,7 @@ svg {
   font-size: 13px;
   line-height: 19px;
   font-weight: 700;
-  text-shadow: 1px 1px #08348f;
+  text-shadow: var(--title-text-shadow);
   white-space: nowrap;
   text-overflow: ellipsis;
 }
@@ -243,8 +297,8 @@ svg {
 .menu-trigger:hover,
 .menu-trigger[aria-expanded="true"] {
   padding: 0 6px 1px;
-  border: 1px solid #e5a700;
-  background: #fff3c8;
+  border: 1px solid var(--hover-border);
+  background: var(--hover-bg);
 }
 
 /* ============================ 工作区 ============================ */
@@ -283,11 +337,11 @@ svg {
   justify-content: space-between;
   gap: 4px;
   padding: 0 5px 0 8px;
-  border-bottom: 1px solid #c5d5e2;
-  color: #153c69;
-  background: linear-gradient(180deg, #f6fbff, #d8e8f4);
+  border-bottom: 1px solid var(--head-border);
+  color: var(--head-text);
+  background: var(--head-grad);
   font-weight: 700;
-  text-shadow: 1px 1px #ffffff;
+  text-shadow: var(--head-shadow);
 }
 
 .bookmark-head-title {
@@ -310,13 +364,13 @@ svg {
   border-right-color: var(--control-dark);
   border-bottom-color: var(--control-dark);
   border-radius: 3px;
-  color: #173f72;
+  color: var(--btn-accent-text);
   background: var(--control);
 }
 
 .bookmark-refresh:hover {
-  border-color: #e5a700;
-  background: #fff3c8;
+  border-color: var(--hover-border);
+  background: var(--hover-bg);
 }
 
 .bookmark-refresh:active {
@@ -326,7 +380,7 @@ svg {
 .bookmark-list {
   min-height: 0;
   overflow-y: auto;
-  background: #ffffff;
+  background: var(--list-bg);
 }
 
 .bookmark-group-head {
@@ -336,12 +390,12 @@ svg {
   height: 24px;
   padding: 2px 8px 2px 7px;
   overflow: hidden;
-  border-bottom: 1px solid #c5d5e2;
-  color: #153c69;
-  background: linear-gradient(180deg, #f6fbff, #d8e8f4);
+  border-bottom: 1px solid var(--head-border);
+  color: var(--head-text);
+  background: var(--head-grad);
   text-align: left;
   font-weight: 700;
-  text-shadow: 1px 1px #ffffff;
+  text-shadow: var(--head-shadow);
   white-space: nowrap;
 }
 
@@ -353,8 +407,8 @@ svg {
   height: 40px;
   padding: 3px 6px 3px 7px;
   overflow: hidden;
-  border-bottom: 1px solid #edf0f2;
-  background: #ffffff;
+  border-bottom: 1px solid var(--divider);
+  background: var(--list-bg);
   text-align: left;
 }
 
@@ -367,7 +421,7 @@ svg {
   margin-left: 2px;
   border: 1px solid transparent;
   border-radius: 3px;
-  color: #7c8894;
+  color: var(--bm-path-text);
   opacity: 0;
   transition: opacity 0.08s;
 }
@@ -378,13 +432,13 @@ svg {
 }
 
 .bm-del:hover {
-  border-color: #c98f8f;
-  background: #fdeaea;
-  color: #8c2f2f;
+  border-color: var(--del-hover-border);
+  background: var(--del-hover-bg);
+  color: var(--del-hover-text);
 }
 
 .bookmark-item:hover:not(.active) {
-  background: #eaf2fb;
+  background: var(--list-hover);
 }
 
 .bookmark-item.active {
@@ -393,7 +447,7 @@ svg {
 }
 
 .bookmark-item.active .bookmark-path {
-  color: #dbe7f7;
+  color: var(--sel-secondary-text);
 }
 
 .bookmark-icon {
@@ -421,7 +475,7 @@ svg {
 
 .bookmark-path {
   overflow: hidden;
-  color: #7c8894;
+  color: var(--bm-path-text);
   font: 10px/1.4 var(--mono-font);
   white-space: nowrap;
   text-overflow: ellipsis;
@@ -429,7 +483,7 @@ svg {
 
 .bookmark-empty {
   padding: 10px 8px;
-  color: #8a94a0;
+  color: var(--bm-empty-text);
   line-height: 1.6;
 }
 
@@ -464,13 +518,13 @@ svg {
   border-right-color: var(--control-dark);
   border-bottom-color: var(--control-dark);
   border-radius: 3px;
-  color: #173f72;
+  color: var(--btn-accent-text);
   background: var(--control);
 }
 
 .nav-btn:hover:not(:disabled) {
-  border-color: #e5a700;
-  background: #fff3c8;
+  border-color: var(--hover-border);
+  background: var(--hover-bg);
 }
 
 .nav-btn:active:not(:disabled) {
@@ -486,7 +540,7 @@ svg {
   border: 1px solid var(--input-border);
   border-radius: 2px;
   background: var(--paper);
-  color: #1d2428;
+  color: var(--input-text);
   font-family: var(--mono-font);
   font-size: 12px;
   line-height: 18px;
@@ -505,8 +559,8 @@ input.nav-path {
 }
 
 input.nav-path:focus {
-  border-color: #e5a700;
-  background: #fffdf3;
+  border-color: var(--hover-border);
+  background: var(--paper);
   box-shadow: 0 0 0 1px rgba(229, 167, 0, 0.35);
 }
 
@@ -535,13 +589,13 @@ input.nav-path:focus {
   border-right-color: var(--control-dark);
   border-bottom-color: var(--control-dark);
   border-radius: 3px;
-  color: #173f72;
+  color: var(--btn-accent-text);
   background: var(--control);
 }
 
 .bm-add:hover {
-  border-color: #e5a700;
-  background: #fff3c8;
+  border-color: var(--hover-border);
+  background: var(--hover-bg);
 }
 
 .bm-add:active {
@@ -558,7 +612,7 @@ input.nav-path:focus {
   z-index: 90;
   display: grid;
   place-items: center;
-  background: rgba(31, 47, 61, 0.35);
+  background: var(--overlay-bg);
 }
 
 /* hidden 属性会被上面的 display:grid 打败，必须显式关掉 */
@@ -569,7 +623,7 @@ input.nav-path:focus {
 .bm-edit {
   width: min(420px, calc(100vw - 48px));
   padding: 0;
-  border: 1px solid #0a3c7c;
+  border: 1px solid var(--edit-border);
   border-radius: 4px;
   box-shadow: 0 6px 24px rgba(0, 0, 0, 0.35);
   background: var(--control, #ece9d8);
@@ -579,10 +633,10 @@ input.nav-path:focus {
 .bm-edit-title {
   padding: 5px 10px;
   color: #ffffff;
-  background: linear-gradient(180deg, #3f8cf3, #1054bb 45%, #0a45a1);
+  background: var(--edit-title-grad);
   font-weight: 700;
   font-size: 12px;
-  text-shadow: 1px 1px #08348f;
+  text-shadow: var(--edit-title-shadow);
 }
 
 .bm-edit-row {
@@ -591,7 +645,7 @@ input.nav-path:focus {
   align-items: center;
   gap: 8px;
   margin: 10px 12px 0;
-  color: #1d2428;
+  color: var(--input-text);
   font-size: 12px;
 }
 
@@ -601,15 +655,15 @@ input.nav-path:focus {
   padding: 0 6px;
   border: 1px solid var(--input-border, #7f9db9);
   border-radius: 2px;
-  background: #ffffff;
-  color: #1d2428;
+  background: var(--input-bg);
+  color: var(--input-text);
   font-family: var(--mono-font, Consolas, monospace);
   font-size: 12px;
   outline: none;
 }
 
 .bm-edit-row input:focus {
-  border-color: #e5a700;
+  border-color: var(--hover-border);
   box-shadow: 0 0 0 1px rgba(229, 167, 0, 0.35);
 }
 
@@ -628,14 +682,14 @@ input.nav-path:focus {
   border-right-color: var(--control-dark, #7a8b99);
   border-bottom-color: var(--control-dark, #7a8b99);
   border-radius: 3px;
-  color: #173f72;
+  color: var(--btn-accent-text);
   background: var(--control, #ece9d8);
   font-size: 12px;
 }
 
 .bm-btn:hover {
-  border-color: #e5a700;
-  background: #fff3c8;
+  border-color: var(--hover-border);
+  background: var(--hover-bg);
 }
 
 .bm-btn.primary {
@@ -645,18 +699,18 @@ input.nav-path:focus {
 .nav-live {
   flex: none;
   padding: 1px 6px;
-  border: 1px solid #b8c4cc;
+  border: 1px solid var(--live-border);
   border-radius: 3px;
-  background: #eef3f7;
-  color: #4a5a66;
+  background: var(--live-bg);
+  color: var(--live-text);
   font: 10px/1.5 Consolas, monospace;
   letter-spacing: 0.5px;
 }
 
 .nav-live.ok {
-  border-color: #9ecfa9;
-  background: #e8f7ec;
-  color: #1e6f34;
+  border-color: var(--live-ok-border);
+  background: var(--live-ok-bg);
+  color: var(--live-ok-text);
 }
 
 /* ============================ 状态栏 ============================ */
@@ -681,7 +735,7 @@ input.nav-path:focus {
   border: 1px solid var(--control-mid);
   border-right-color: var(--control-light);
   border-bottom-color: var(--control-light);
-  color: #565650;
+  color: var(--status-text);
   white-space: nowrap;
   text-overflow: ellipsis;
 }
@@ -694,8 +748,8 @@ input.nav-path:focus {
   flex: 0 0 auto;
   width: 7px;
   height: 7px;
-  border: 1px solid #8b6d2f;
-  background: #d9c98a;
+  border: 1px solid var(--lamp-border);
+  background: var(--lamp-bg);
 }
 
 .connection-lamp.ok {
@@ -721,8 +775,8 @@ input.nav-path:focus {
   width: 200px;
   padding: 2px;
   border: 1px solid var(--control-light);
-  border-right-color: #242424;
-  border-bottom-color: #242424;
+  border-right-color: var(--popup-side-border);
+  border-bottom-color: var(--popup-side-border);
   background: var(--control);
   box-shadow:
     inset 1px 1px var(--control-mid),
@@ -758,10 +812,10 @@ input.nav-path:focus {
   bottom: 29px;
   max-width: min(340px, calc(100vw - 24px));
   padding: 6px 9px;
-  border: 1px solid #000000;
-  background: #ffffe1;
+  border: 1px solid var(--toast-border);
+  background: var(--toast-bg);
   box-shadow: 2px 2px 4px rgba(0, 0, 0, 0.28);
-  color: #202020;
+  color: var(--toast-text);
 }
 
 /* ============================ 窗口缩放手柄 ============================ */
@@ -847,7 +901,7 @@ input.nav-path:focus {
 /* ============================ 滚动条 ============================ */
 
 * {
-  scrollbar-color: #b9b6aa #f1f0e8;
+  scrollbar-color: var(--control-mid) var(--scroll-track);
   scrollbar-width: auto;
 }
 
@@ -857,13 +911,13 @@ input.nav-path:focus {
 }
 
 ::-webkit-scrollbar-track {
-  border: 1px solid #d1cec0;
-  background: #f1f0e8;
+  border: 1px solid var(--scroll-track-border);
+  background: var(--scroll-track);
 }
 
 ::-webkit-scrollbar-thumb {
   min-height: 24px;
-  border: 1px solid #ffffff;
+  border: 1px solid var(--scroll-thumb-border);
   border-right-color: var(--control-dark);
   border-bottom-color: var(--control-dark);
   background: var(--control);
@@ -883,11 +937,11 @@ input.nav-path:focus {
   grid-template-rows: 24px minmax(0, 1fr);
   margin: 4px 5px 5px;
   overflow: hidden;
-  border: 1px solid var(--input-border);
-  border-top-color: #536b7d;
-  border-left-color: #536b7d;
-  background: #ffffff;
-  box-shadow: inset 1px 1px #d8d8d0;
+  border: 1px solid var(--list-border);
+  border-top-color: var(--list-border-top);
+  border-left-color: var(--list-border-left);
+  background: var(--list-bg);
+  box-shadow: var(--list-inner-shadow);
   outline: none; /* 键盘焦点落在容器上，不画焦点框（选中态已有反馈） */
 }
 
@@ -897,11 +951,11 @@ input.nav-path:focus {
   display: grid;
   grid-template-columns: minmax(0, 1fr) 90px 150px;
   overflow: hidden;
-  border-bottom: 1px solid #c5d5e2;
-  color: #153c69;
-  background: linear-gradient(180deg, #f6fbff, #d8e8f4);
+  border-bottom: 1px solid var(--head-border);
+  color: var(--head-text);
+  background: var(--head-grad);
   font-weight: 700;
-  text-shadow: 1px 1px #ffffff;
+  text-shadow: var(--head-shadow);
   user-select: none;
 }
 
@@ -909,7 +963,7 @@ input.nav-path:focus {
   min-width: 0;
   overflow: hidden;
   padding: 3px 8px;
-  border-right: 1px solid #c5d5e2;
+  border-right: 1px solid var(--head-border);
   background: transparent;
   text-align: left;
   white-space: nowrap;
@@ -921,7 +975,7 @@ input.nav-path:focus {
 }
 
 .fh-cell:hover {
-  background: #e8f1fa;
+  background: var(--list-hover);
 }
 
 .fh-name {
@@ -954,7 +1008,7 @@ input.nav-path:focus {
   min-height: 0;
   overflow-y: auto;
   overflow-x: hidden;
-  background: #ffffff;
+  background: var(--list-bg);
 }
 
 .file-row {
@@ -969,11 +1023,11 @@ input.nav-path:focus {
 }
 
 .file-row:nth-child(even) {
-  background: #f6f9fc; /* 隔行 */
+  background: var(--list-alt); /* 隔行 */
 }
 
 .file-row:hover {
-  background: #eaf2fb;
+  background: var(--list-hover);
 }
 
 .file-row.sel {
@@ -983,7 +1037,7 @@ input.nav-path:focus {
 
 .file-row.sel .fr-size,
 .file-row.sel .fr-mtime {
-  color: #dbe7f7;
+  color: var(--sel-secondary-text);
 }
 
 .file-row.cut {
@@ -1031,7 +1085,7 @@ input.nav-path:focus {
 .fr-size,
 .fr-mtime {
   overflow: hidden;
-  color: #5c6a76;
+  color: var(--row-meta-text);
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
   text-overflow: ellipsis;
@@ -1053,8 +1107,8 @@ input.nav-path:focus {
   height: 17px;
   padding: 0 3px;
   border: 1px solid var(--input-border);
-  background: #ffffff;
-  color: #000000;
+  background: var(--input-bg);
+  color: var(--input-text);
   font-size: 12px;
   line-height: 15px;
 }
@@ -1062,5 +1116,187 @@ input.nav-path:focus {
 /* 空目录占位 */
 .fv-empty {
   padding: 14px 10px 0 34px;
-  color: #8a94a0;
+  color: var(--bm-empty-text);
+}
+
+/* ============================================================
+ * 皮肤：黑色玻璃（:root[data-theme="glass"]）
+ * 真·透明窗口（tauri transparent + acrylic），配合启动时
+ * Rust 侧 apply_acrylic：桌面透出 + 系统级模糊。
+ * 交通灯（黄min/绿max/红close）移到右侧。
+ * ============================================================ */
+
+:root[data-theme="glass"] {
+  color: #e8edf5;
+  --focus: #8ab4ff;
+  --body-bg: transparent;
+  --body-stripes: none;
+  --control: rgba(32, 35, 44, 0.86);
+  --control-light: rgba(255, 255, 255, 0.55);
+  --control-mid: rgba(255, 255, 255, 0.22);
+  --control-dark: rgba(255, 255, 255, 0.12);
+  --selection: #2f7cf6;
+  --input-border: rgba(255, 255, 255, 0.25);
+  --paper: rgba(255, 255, 255, 0.10);
+  --online: #34c759;
+  --shell-bg: rgba(21, 23, 30, 0.86);
+  --shell-top-border: rgba(255, 255, 255, 0.18);
+  --shell-radius: 12px;
+  --shell-shadow: 0 24px 70px rgba(0, 0, 0, 0.55), 0 0 0 1px rgba(0, 0, 0, 0.35);
+  --titlebar-grad: transparent;
+  --titlebar-border: none;
+  --titlebar-border-top: rgba(255, 255, 255, 0.14);
+  --title-text-shadow: none;
+  --hover-border: rgba(255, 255, 255, 0.45);
+  --hover-bg: rgba(255, 255, 255, 0.14);
+  --head-grad: rgba(255, 255, 255, 0.06);
+  --head-text: #cfe0f5;
+  --head-border: rgba(255, 255, 255, 0.10);
+  --head-shadow: none;
+  --btn-accent-text: #cfe2ff;
+  --list-bg: rgba(255, 255, 255, 0.045);
+  --list-alt: rgba(255, 255, 255, 0.03);
+  --list-hover: rgba(255, 255, 255, 0.09);
+  --list-border: rgba(255, 255, 255, 0.14);
+  --list-border-top: rgba(255, 255, 255, 0.14);
+  --list-border-left: rgba(255, 255, 255, 0.14);
+  --list-inner-shadow: none;
+  --sel-secondary-text: #d7e5ff;
+  --row-meta-text: rgba(232, 238, 248, 0.55);
+  --divider: rgba(255, 255, 255, 0.06);
+  --bm-path-text: rgba(232, 238, 248, 0.5);
+  --bm-empty-text: rgba(232, 238, 248, 0.4);
+  --input-bg: rgba(255, 255, 255, 0.08);
+  --input-text: #e8edf5;
+  --toast-bg: rgba(38, 42, 52, 0.96);
+  --toast-text: #f0f4fa;
+  --toast-border: rgba(255, 255, 255, 0.22);
+  --overlay-bg: rgba(8, 10, 14, 0.55);
+  --edit-border: rgba(255, 255, 255, 0.2);
+  --edit-title-grad: rgba(255, 255, 255, 0.08);
+  --edit-title-shadow: none;
+  --popup-side-border: rgba(255, 255, 255, 0.14);
+  --status-text: rgba(232, 238, 248, 0.62);
+  --scroll-track: transparent;
+  --scroll-track-border: transparent;
+  --scroll-thumb-border: rgba(255, 255, 255, 0.35);
+  --lamp-bg: #6b6350;
+  --lamp-border: #8b6d2f;
+  --live-bg: rgba(255, 255, 255, 0.08);
+  --live-border: rgba(255, 255, 255, 0.2);
+  --live-text: rgba(232, 238, 248, 0.7);
+  --live-ok-bg: rgba(47, 124, 246, 0.18);
+  --live-ok-border: rgba(47, 124, 246, 0.5);
+  --live-ok-text: #7db3ff;
+  --del-hover-border: rgba(255, 120, 120, 0.5);
+  --del-hover-bg: rgba(255, 90, 90, 0.18);
+  --del-hover-text: #ff9d9d;
+}
+
+:root[data-theme="glass"] body {
+  background: transparent; /* 透出桌面（配合 transparent:true + acrylic） */
+}
+
+:root[data-theme="glass"] .app-shell {
+  border-width: 1px;
+  border-color: rgba(255, 255, 255, 0.18);
+  border-radius: 12px;
+}
+
+/* 标题栏：透明暗条，交通灯右置（DOM 顺序 min/max/close，靠颜色区分语义） */
+:root[data-theme="glass"] .xp-titlebar {
+  margin: -1px -1px 0;
+  border: none;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 11px 11px 0 0;
+  color: #eef2f8;
+}
+
+:root[data-theme="glass"] .window-title {
+  text-shadow: none;
+}
+
+:root[data-theme="glass"] .title-icon {
+  border-color: rgba(255, 255, 255, 0.3);
+  background: rgba(255, 255, 255, 0.08);
+}
+
+:root[data-theme="glass"] .window-controls {
+  gap: 8px;
+  height: auto;
+}
+
+/* 交通灯按钮：小圆点，隐藏 lucide 线条图标 */
+:root[data-theme="glass"] .window-button {
+  width: 13px;
+  height: 13px;
+  padding: 0;
+  border: none;
+  border-radius: 50%;
+  background: #8d939e;
+  box-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.55), 0 0 0 0.5px rgba(0, 0, 0, 0.25);
+}
+
+:root[data-theme="glass"] .window-button svg {
+  display: none;
+}
+
+:root[data-theme="glass"] .window-button:hover {
+  border: none;
+  filter: brightness(1.2);
+}
+
+:root[data-theme="glass"] .window-button:active {
+  padding: 0;
+  border: none;
+  filter: brightness(0.9);
+}
+
+:root[data-theme="glass"] #minimize-window {
+  background: #febc2e; /* 黄 = 最小化 */
+}
+
+:root[data-theme="glass"] #maximize-window {
+  background: #28c840; /* 绿 = 最大化/还原 */
+}
+
+:root[data-theme="glass"] #close-window,
+:root[data-theme="glass"] .window-button.close {
+  background: #ff5f57; /* 红 = 关闭 */
+}
+
+:root[data-theme="glass"] button:disabled {
+  color: rgba(232, 238, 248, 0.38);
+  text-shadow: none;
+}
+
+/* 弹层加毛玻璃 */
+:root[data-theme="glass"] .popup-menu {
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.5);
+  -webkit-backdrop-filter: blur(20px) saturate(150%);
+  backdrop-filter: blur(20px) saturate(150%);
+}
+
+:root[data-theme="glass"] .toast {
+  -webkit-backdrop-filter: blur(16px);
+  backdrop-filter: blur(16px);
+}
+
+:root[data-theme="glass"] .bm-edit {
+  background: rgba(30, 33, 41, 0.97);
+  -webkit-backdrop-filter: blur(24px);
+  backdrop-filter: blur(24px);
+}
+
+:root[data-theme="glass"] .bm-edit-title {
+  color: #eef2f8;
+}
+
+:root[data-theme="glass"] .bookmark-item.active .bookmark-icon {
+  color: inherit; /* XP 金黄高亮不适用暗色选中态 */
+}
+
+:root[data-theme="glass"] .file-row.sel .fr-icon {
+  color: inherit;
 }

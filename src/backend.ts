@@ -21,6 +21,16 @@ export const backend = {
     return invoke<string | null>("startup_dir");
   },
 
+  /** 启动参数 --skin=xp|glass（无则 null） */
+  async startupSkin(): Promise<string | null> {
+    return invoke<string | null>("startup_skin");
+  },
+
+  /** 黑色玻璃皮肤的系统级亚克力模糊（开启/摘除；拖动前摘除防卡） */
+  async setGlass(enabled: boolean): Promise<void> {
+    return invoke<void>("set_glass", { enabled });
+  },
+
   // ---- 文件视图（fileops.rs）----
 
   /** 目录列表；path 无效/不可读返回 null（前端 toast） */

@@ -429,11 +429,57 @@ interface MenuItem {
   action: () => void;
 }
 
-const MENUS: Record<string, MenuItem[]> = {
+type Skin = "xp" | "glass";
+const LS_SKIN = "skin";
+const SKIN_LABELS: Record<Skin, string> = {
+  xp: "XP 经典",
+  glass: "黑色玻璃",
+};
+
+function currentSkin(): Skin {
+  return localStorage.getItem(LS_SKIN) === "glass" ? "glass" : "xp";
+}
+
+/** 切皮肤：主题变量 + 窗口亚克力效果（黑色玻璃时开启）+ 菜单项勾选态 */
+async function applySkin(skin: Skin): Promise<void> {
+  localStorage.setItem(LS_SKIN, skin);
+  document.documentElement.dataset.theme = skin;
+  refreshViewMenu();
+  if (isTauri()) await backend.setGlass(skin === "glass").catch(() => undefined);
+  showToast(`已切换皮肤：${SKIN_LABELS[skin]}`);
+}
+
+function refreshViewMenu(): void {
+  const skin = currentSkin();
+  MENUS.view = [
+    { label: "刷新书签", action: () => void reloadBookmarks() },
+    { label: `皮肤：${SKIN_LABELS.xp}${skin === "xp" ? "  ●" : ""}`, action: () => void applySkin("xp") },
+    { label: `皮肤：${SKIN_LABELS.glass}${skin === "glass" ? "  ●" : ""}`, action: () => void applySkin("glass") },
+  ];
+}
+
+/** 拖动/缩放前摘除亚克力（已知卡顿源），停止后延迟恢复 */
+function pauseGlassForDrag(): void {
+  if (currentSkin() !== "glass" || !isTauri()) return;
+  void backend.setGlass(false).catch(() => undefined);
+}
+
+let glassRestoreTimer: number | null = null;
+function scheduleGlassRestore(): void {
+  if (currentSkin() !== "glass" || !isTauri()) return;
+  if (glassRestoreTimer !== null) window.clearTimeout(glassRestoreTimer);
+  glassRestoreTimer = window.setTimeout(() => {
+    glassRestoreTimer = null;
+    void backend.setGlass(true).catch(() => undefined);
+  }, 400);
+}
+
+let MENUS: Record<string, MenuItem[]> = {
   file: [{ label: "退出", action: () => void windowAction("close") }],
   view: [{ label: "刷新书签", action: () => void reloadBookmarks() }],
   help: [{ label: "关于", action: () => showToast("the_file：Tauri 壳 + 自绘文件列表（Tablacus Explorer 定制版演进而来）") }],
 };
+refreshViewMenu();
 
 function openMenu(name: string, anchor: HTMLElement): void {
   const items = MENUS[name];
@@ -464,17 +510,20 @@ function closeMenu(): void {
 function startWindowDrag(event: MouseEvent): void {
   if (event.button !== 0 || event.detail !== 1) return;
   if ((event.target as Element).closest(".window-controls")) return;
+  pauseGlassForDrag(); // 亚克力拖动卡顿规避：拖前摘除，onMoved 后恢复
   void getCurrentWindow().startDragging().catch(() => undefined);
 }
 
 async function startWindowResize(direction: ResizeDirection, event: PointerEvent): Promise<void> {
   if (event.button !== 0) return;
   event.preventDefault();
+  pauseGlassForDrag();
   try {
     await getCurrentWindow().startResizeDragging(direction);
   } catch {
     // 忽略
   }
+  scheduleGlassRestore();
 }
 
 async function windowAction(action: "minimize" | "maximize" | "close"): Promise<void> {
@@ -599,24 +648,51 @@ function startClock(): void {
 }
 
 function boot(): void {
+  // 皮肤先于 UI 生效（免闪白）：localStorage 记忆，--skin= 参数优先
+  document.documentElement.dataset.theme = currentSkin();
   initFileview(); // 文件列表（自绘）：初始目录 = 启动参数 > 上次目录 > 猜盘根
   bindEvents();
   startClock();
   refreshIcons();
   void reloadBookmarks();
   void setupExternalOpen(); // 单实例转发 + 外部打开目录自动累计临时书签
+  void setupSkinEffects();
+}
+
+/** 启动时的皮肤副作用：--skin= 参数覆盖记忆 + 亚克力开启 + 拖动恢复钩子 */
+async function setupSkinEffects(): Promise<void> {
+  if (!isTauri()) return;
+  const argSkin = await backend.startupSkin().catch(() => null);
+  if (argSkin === "xp" || argSkin === "glass") {
+    await applySkin(argSkin);
+  } else if (currentSkin() === "glass") {
+    await backend.setGlass(true).catch(() => undefined);
+  }
+  const appWindow = getCurrentWindow();
+  // 拖动/缩放结束后（含标题栏拖动）恢复亚克力
+  void appWindow.onMoved(() => scheduleGlassRestore());
+  void appWindow.onResized(() => scheduleGlassRestore());
 }
 
 // ============================ 外部打开（单实例） ============================
 
 /**
  * 单实例管线：第二实例（qq_codex 再次双击项目标签）启动即退出，
- * 目录通过 external-open 事件转发到这里 → 同窗口导航 + 自动累计临时书签。
+ * 目录/皮肤通过 external-open 事件转发到这里 → 同窗口导航 + 自动累计临时书签。
  * 本实例自己是带参启动的（第一次双击），initFileview 已导航，这里只补累计。
  */
+interface ExternalOpenPayload {
+  dir?: string | null;
+  skin?: string | null;
+}
+
 async function setupExternalOpen(): Promise<void> {
   if (!isTauri()) return;
-  await listen<string>("external-open", (event) => void openExternalDir(event.payload));
+  await listen<ExternalOpenPayload>("external-open", (event) => {
+    const payload = event.payload ?? {};
+    if (payload.skin === "xp" || payload.skin === "glass") void applySkin(payload.skin);
+    if (payload.dir) void openExternalDir(payload.dir);
+  });
   const argDir = await backend.startupDir().catch(() => null);
   if (argDir) autoSessionBookmark(argDir);
 }
