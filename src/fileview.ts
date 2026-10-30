@@ -102,8 +102,8 @@ export function normalizeAddressExport(input: string): string {
 }
 
 /**
- * 初始化：恢复上次的排序，构建 DOM、绑定事件，进入初始目录
- * （上次目录优先，失效则依次猜 C:/D:/E: 盘根）。
+ * 初始化：恢复上次的排序，构建 DOM、绑定事件，进入初始目录。
+ * 优先级：命令行传入目录（qq_codex 双击项目标签启动）> 上次目录 > 猜盘根。
  */
 export async function initFileview(): Promise<void> {
   const saved = localStorage.getItem(LS_SORT);
@@ -116,6 +116,15 @@ export async function initFileview(): Promise<void> {
   }
   buildDom();
   bindBookmarkHighlight();
+  const argDir = await backend.startupDir().catch(() => null);
+  if (argDir) {
+    const norm = normalizeAddress(argDir);
+    if (norm && (await backend.pathExists(norm).catch(() => false))) {
+      await navigate(norm);
+      return;
+    }
+    toast(`启动参数目录无效，已回退上次目录：${argDir}`);
+  }
   const last = localStorage.getItem(LS_LASTDIR);
   if (last && (await backend.pathExists(last).catch(() => false))) {
     await navigate(last);

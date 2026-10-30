@@ -10,8 +10,11 @@
 
 ```
 the_file.exe          # 双击即用（需 WebView2 Runtime，Win10/11 自带）
+the_file.exe <路径>    # 指定启动目录（qq_codex 双击项目标签即此方式）；支持 Windows/UNC/Linux 写法
 config\bookmarks.json # 常驻书签数据源，应用内增删改即时写回；改文件后"查看→刷新书签"重载
 ```
+
+启动目录优先级：命令行传入目录 > 上次目录记忆（localStorage）> 猜盘根；传入目录不存在时 toast 提示并回退。
 
 ## 功能
 

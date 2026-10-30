@@ -47,6 +47,16 @@ fn bookmarks_path() -> Option<PathBuf> {
 
 // ============================ Tauri commands ============================
 
+/// 启动参数传入的初始目录：第一个非空参数（跳过 exe 自身路径）。
+/// qq_codex 双击项目标签即以 `the_file.exe <路径>` 启动；无参数返回 None。
+#[tauri::command]
+fn startup_dir() -> Option<String> {
+    std::env::args_os()
+        .skip(1)
+        .map(|arg| arg.to_string_lossy().trim().to_string())
+        .find(|arg| !arg.is_empty())
+}
+
 /// 书签 JSON 原文（config/bookmarks.json；找不到/读不了返回 None，前端 toast）
 #[tauri::command]
 fn read_bookmarks() -> Option<String> {
@@ -72,6 +82,7 @@ fn write_bookmarks(content: String) -> Result<(), String> {
 pub fn run() {
     tauri::Builder::default()
         .invoke_handler(tauri::generate_handler![
+            startup_dir,
             read_bookmarks,
             write_bookmarks,
             fileops::dir_list,

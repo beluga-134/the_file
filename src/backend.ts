@@ -16,6 +16,11 @@ export const backend = {
     return invoke<void>("write_bookmarks", { content });
   },
 
+  /** 启动参数传入的初始目录（命令行第一个非空参数；无则 null，浏览器预览返回 null） */
+  async startupDir(): Promise<string | null> {
+    return invoke<string | null>("startup_dir");
+  },
+
   // ---- 文件视图（fileops.rs）----
 
   /** 目录列表；path 无效/不可读返回 null（前端 toast） */
